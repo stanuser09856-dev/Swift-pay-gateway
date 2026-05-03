@@ -1,7 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/admin",
+      "source": "/adminpanelchandan",
       "destination": "/api/adminpannelchandan.js"
     },
     {
