@@ -301,8 +301,17 @@ export default async function handler(req, res) {
 
         if (action === 'GET_LIFAFA_INFO') {
             const snap = await get(ref(db, `lifafas/${data.code}`));
-            if (!snap.exists() || snap.val().status !== 'ACTIVE') throw new Error("Lifafa not found or fully claimed.");
+            if (!snap.exists()) throw new Error("Lifafa not found.");
             let lData = snap.val();
+            
+            // --- 72 HOURS EXPIRY CHECK ---
+            const hoursOld = (Date.now() - (lData.timestamp || 0)) / (1000 * 60 * 60);
+            if (hoursOld > 72 && lData.status === 'ACTIVE') {
+                await update(ref(db, `lifafas/${data.code}`), { status: 'EXPIRED' });
+                throw new Error("This Lifafa has expired (72 hours limit).");
+            }
+
+            if (lData.status !== 'ACTIVE') throw new Error("Lifafa is fully claimed or expired.");
             return res.json({ data: { type: lData.type, channel: lData.channel, hasCode: (lData.code && lData.code.trim() !== "") } });
         }
 
@@ -312,10 +321,18 @@ export default async function handler(req, res) {
             if (!lifafaSnap.exists()) throw new Error("Lifafa not found.");
             
             let lData = lifafaSnap.val();
+            
+            // --- 72 HOURS EXPIRY CHECK ---
+            const hoursOld = (Date.now() - (lData.timestamp || 0)) / (1000 * 60 * 60);
+            if (hoursOld > 72) {
+                if (lData.status === 'ACTIVE') await update(lifafaRef, { status: 'EXPIRED' });
+                throw new Error("This Lifafa has expired.");
+            }
+
             if (lData.status !== 'ACTIVE') throw new Error("Lifafa is fully claimed or expired.");
             
             if (lData.code && lData.code.trim() !== "" && lData.code !== data.passCode) {
-                throw new Error("Invalid Unique Code / Password!");
+                throw new Error("Invalid Unique Access Code!");
             }
 
             let wonAmount = 0;
@@ -324,20 +341,31 @@ export default async function handler(req, res) {
             const result = await runTransaction(lifafaRef, (currentData) => {
                 if (currentData === null) return null; 
                 if (currentData.status !== 'ACTIVE') return;
-                if (currentData.claimers && currentData.claimers[data.phone]) return; 
+                
+                // --- ANTI-FRAUD / ANTI-CHEAT CHECKS ---
+                if (currentData.claimers && currentData.claimers[data.phone]) return; // Phone already claimed
+                if (currentData.claimedIPs && currentData.claimedIPs[userIP]) return; // Device/IP already claimed
+                
                 if (currentData.claimedUsers >= currentData.totalUsers) return; 
 
+                // Process Claim
                 currentData.claimedUsers = (currentData.claimedUsers || 0) + 1;
+                
                 if (!currentData.claimers) currentData.claimers = {};
                 currentData.claimers[data.phone] = true;
+                
+                if (!currentData.claimedIPs) currentData.claimedIPs = {};
+                currentData.claimedIPs[userIP] = true; // Mark IP as claimed
+
                 if (currentData.claimedUsers >= currentData.totalUsers) currentData.status = 'COMPLETED';
                 return currentData;
             });
 
-            if (!result.committed) throw new Error("Lifafa invalid, expired, or already claimed.");
+            if (!result.committed) throw new Error("Lifafa invalid, fully claimed, or already claimed by your device!");
             
             let resultData = result.snapshot.val();
             
+            // --- REWARD CALCULATION ---
             if (resultData.type === 'Scratch') {
                 let min = Number(resultData.minAmount) || 1;
                 let max = Number(resultData.maxAmount) || Number(resultData.amount) || 1;
@@ -345,7 +373,7 @@ export default async function handler(req, res) {
             } else if (resultData.type === 'Toss') {
                 wonAmount = Math.random() < 0.5 ? Number(resultData.amount) : 0;
             } else {
-                wonAmount = Number(resultData.amount);
+                wonAmount = Number(resultData.amount); // Standard
             }
 
             const updates = {};
