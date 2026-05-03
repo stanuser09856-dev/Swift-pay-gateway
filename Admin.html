@@ -283,16 +283,8 @@
     </div>
 
     <script>
-        // --- FIREBASE CONFIG (NEW) ---
-        const firebaseConfig = {
-          apiKey: "AIzaSyAiFL9osnzeDSzMmLw0yIiELSqHAblenr0",
-          authDomain: "gateway-4.firebaseapp.com",
-          databaseURL: "https://gateway-4-default-rtdb.firebaseio.com",
-          projectId: "gateway-4",
-          storageBucket: "gateway-4.firebasestorage.app",
-          messagingSenderId: "493956359329",
-          appId: "1:493956359329:web:b41ee86e4154fbfa297ce0"
-        };
+        // --- FIREBASE CONFIG (INJECTED BY BACKEND) ---
+        /* INJECT_FIREBASE_CONFIG */
         
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
@@ -386,41 +378,13 @@
                 let ipActionBtn = '';
                 if (user.ipAddress) {
                     if (isIpBanned) {
-                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', true)" class="text-[9px] px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-check mr-1"></i> UNBAN IP</button>`;
+                        ipActionBtn = '<button onclick="toggleIPBan(\'' + phone + '\', \'' + user.ipAddress + '\', true)" class="text-[9px] px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-check mr-1"></i> UNBAN IP</button>';
                     } else {
-                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', false)" class="text-[9px] px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-ban mr-1"></i> BAN IP</button>`;
+                        ipActionBtn = '<button onclick="toggleIPBan(\'' + phone + '\', \'' + user.ipAddress + '\', false)" class="text-[9px] px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-ban mr-1"></i> BAN IP</button>';
                     }
                 }
                 
-                tbody.innerHTML += `
-                    <tr class="border-b border-gray-50 hover:bg-gray-50 transition-all">
-                        <td class="px-6 py-4">${user.name}</td>
-                        <td class="px-6 py-4 font-mono">${phone}</td>
-                        <td class="px-6 py-4 text-blue-600 font-black">₹${(user.balance || 0).toFixed(2)}</td>
-                        <td class="px-6 py-4 text-sky-600 font-black">₹${(user.keeperBalance || 0).toFixed(2)}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded-full text-[10px] font-black ${user.isBanned ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
-                                ${user.isBanned ? 'BANNED' : 'ACTIVE'}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 flex gap-2">
-                            <button onclick="toggleBan('${phone}', ${user.isBanned})" class="text-[10px] px-3 py-1 rounded border font-black ${user.isBanned ? 'border-green-500 text-green-500 hover:bg-green-50' : 'border-red-500 text-red-500 hover:bg-red-50'}">
-                                ${user.isBanned ? 'UNBAN' : 'BAN'}
-                            </button>
-                        </td>
-                        <td class="px-6 py-4 border-l border-gray-100 bg-gray-50">
-                            <button onclick="toggleWhitelist('${phone}', ${isWhitelisted})" class="text-[10px] px-3 py-1 rounded font-black border transition-colors ${isWhitelisted ? 'bg-indigo-100 border-indigo-200 text-indigo-600 hover:bg-indigo-200' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-100'}">
-                                ${isWhitelisted ? '<i class="fas fa-star text-yellow-500 mr-1"></i> SAFE' : 'NORMAL'}
-                            </button>
-                        </td>
-                        <td class="px-6 py-4 border-l border-gray-100 ${isIpBanned ? 'bg-red-100/50' : 'bg-red-50/30'}">
-                            <div class="flex flex-col items-start">
-                                <span class="text-[10px] ${isIpBanned ? 'text-red-600 font-black' : 'text-gray-500'} font-mono">${user.ipAddress || 'Unknown IP'}</span>
-                                ${ipActionBtn}
-                            </div>
-                        </td>
-                    </tr>
-                `;
+                tbody.innerHTML += '<tr class="border-b border-gray-50 hover:bg-gray-50 transition-all"><td class="px-6 py-4">' + user.name + '</td><td class="px-6 py-4 font-mono">' + phone + '</td><td class="px-6 py-4 text-blue-600 font-black">₹' + (user.balance || 0).toFixed(2) + '</td><td class="px-6 py-4 text-sky-600 font-black">₹' + (user.keeperBalance || 0).toFixed(2) + '</td><td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] font-black ' + (user.isBanned ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600') + '">' + (user.isBanned ? 'BANNED' : 'ACTIVE') + '</span></td><td class="px-6 py-4 flex gap-2"><button onclick="toggleBan(\'' + phone + '\', ' + user.isBanned + ')" class="text-[10px] px-3 py-1 rounded border font-black ' + (user.isBanned ? 'border-green-500 text-green-500 hover:bg-green-50' : 'border-red-500 text-red-500 hover:bg-red-50') + '">' + (user.isBanned ? 'UNBAN' : 'BAN') + '</button></td><td class="px-6 py-4 border-l border-gray-100 bg-gray-50"><button onclick="toggleWhitelist(\'' + phone + '\', ' + isWhitelisted + ')" class="text-[10px] px-3 py-1 rounded font-black border transition-colors ' + (isWhitelisted ? 'bg-indigo-100 border-indigo-200 text-indigo-600 hover:bg-indigo-200' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-100') + '">' + (isWhitelisted ? '<i class="fas fa-star text-yellow-500 mr-1"></i> SAFE' : 'NORMAL') + '</button></td><td class="px-6 py-4 border-l border-gray-100 ' + (isIpBanned ? 'bg-red-100/50' : 'bg-red-50/30') + '"><div class="flex flex-col items-start"><span class="text-[10px] ' + (isIpBanned ? 'text-red-600 font-black' : 'text-gray-500') + ' font-mono">' + (user.ipAddress || 'Unknown IP') + '</span>' + ipActionBtn + '</div></td></tr>';
             });
         }
         function filterUsers() {
