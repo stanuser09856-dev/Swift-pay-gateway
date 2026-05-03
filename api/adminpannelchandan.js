@@ -13,17 +13,24 @@ const firebaseConfig = {
 };
 
 export default function handler(req, res) {
+    let html = '';
+    
     try {
-        const filePath = path.join(process.cwd(), 'Admin.html');
-        let html = fs.readFileSync(filePath, 'utf8');
-        
-        // Frontend ki file se placeholder dhoondh kar actual config inject kar rahe hain
-        const configScript = `const firebaseConfig = ${JSON.stringify(firebaseConfig)};`;
-        html = html.replace('/* INJECT_FIREBASE_CONFIG */', configScript);
-        
-        res.setHeader('Content-Type', 'text/html');
-        res.status(200).send(html);
-    } catch (error) {
-        res.status(500).json({ error: "Admin Panel file not found. Ensure Admin.html is in the project root." });
+        // Vercel Linux par case-sensitive hota hai, pehle small 'admin.html' check karega
+        html = fs.readFileSync(path.join(process.cwd(), 'admin.html'), 'utf8');
+    } catch (e1) {
+        try {
+            // Agar small nahi mila, toh capital 'Admin.html' check karega
+            html = fs.readFileSync(path.join(process.cwd(), 'Admin.html'), 'utf8');
+        } catch (e2) {
+            return res.status(500).json({ error: "File not found! Ensure 'admin.html' is uploaded to the root folder of your project." });
+        }
     }
+    
+    // Config Inject karna
+    const configScript = `const firebaseConfig = ${JSON.stringify(firebaseConfig)};`;
+    html = html.replace('/* INJECT_FIREBASE_CONFIG */', configScript);
+    
+    res.setHeader('Content-Type', 'text/html');
+    res.status(200).send(html);
 }
