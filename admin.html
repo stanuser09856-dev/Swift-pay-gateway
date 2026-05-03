@@ -111,6 +111,10 @@
                         <i class="fas fa-users text-2xl text-indigo-600"></i>
                         <span class="text-[10px] font-black uppercase text-indigo-800">User Manager</span>
                     </button>
+                    <button onclick="showAdminView('lifafa')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-orange-50 border-orange-100">
+                        <i class="fas fa-envelope-open-text text-2xl text-orange-600"></i>
+                        <span class="text-[10px] font-black uppercase text-orange-800">Lifafa System</span>
+                    </button>
                     <button onclick="showAdminView('credit-debit')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-purple-50 border-purple-100">
                         <i class="fas fa-exchange-alt text-2xl text-purple-600"></i>
                         <span class="text-[10px] font-black uppercase text-purple-800">Credit/Debit</span>
@@ -147,6 +151,70 @@
                         <i class="fas fa-history text-2xl text-slate-600"></i>
                         <span class="text-[10px] font-black uppercase text-slate-800">Logs</span>
                     </button>
+                </div>
+            </div>
+
+            <div id="view-lifafa" class="admin-view">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">Global Lifafa Manager</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="stat-card lg:col-span-1 border-t-4 border-orange-500">
+                        <h3 class="font-black text-lg text-gray-800 mb-4">Create System Lifafa</h3>
+                        <form onsubmit="event.preventDefault(); adminCreateLifafa()">
+                            <label class="block text-xs font-bold text-gray-400 mb-2">TYPE</label>
+                            <select id="adm-lif-type" onchange="toggleAdminLifafaTypeUI()" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-orange-500 font-bold">
+                                <option value="Standard">Standard</option>
+                                <option value="Scratch">Scratch Card</option>
+                                <option value="Toss">Coin Toss</option>
+                            </select>
+                            
+                            <div id="adm-lif-standard">
+                                <label class="block text-xs font-bold text-gray-400 mb-2">AMOUNT (₹)</label>
+                                <input type="number" id="adm-lif-amt" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-orange-500 font-bold">
+                            </div>
+                            
+                            <div id="adm-lif-scratch" class="hidden grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 mb-2">MIN (₹)</label>
+                                    <input type="number" id="adm-lif-min" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-orange-500 font-bold">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 mb-2">MAX (₹)</label>
+                                    <input type="number" id="adm-lif-max" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-orange-500 font-bold">
+                                </div>
+                            </div>
+                            
+                            <label class="block text-xs font-bold text-gray-400 mb-2">TOTAL USERS</label>
+                            <input type="number" id="adm-lif-users" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-orange-500 font-bold">
+                            
+                            <label class="block text-xs font-bold text-gray-400 mb-2">UNIQUE CODE (OPTIONAL)</label>
+                            <input type="text" id="adm-lif-code" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-orange-500 font-bold uppercase">
+                            
+                            <button type="submit" class="w-full bg-orange-500 text-white font-black py-4 rounded-xl shadow-lg shadow-orange-100 hover:bg-orange-600 transition-colors">CREATE LIFAFA</button>
+                        </form>
+                    </div>
+                    
+                    <div class="stat-card lg:col-span-2">
+                        <h3 class="font-black text-lg text-gray-800 mb-4">All Created Lifafas (Global)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase">
+                                    <tr>
+                                        <th class="px-4 py-3">Creator</th>
+                                        <th class="px-4 py-3">Type</th>
+                                        <th class="px-4 py-3">Amount Detail</th>
+                                        <th class="px-4 py-3">Claimed</th>
+                                        <th class="px-4 py-3">Status</th>
+                                        <th class="px-4 py-3">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adm-lifafas-body" class="font-bold"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -341,6 +409,7 @@
         let allTxns = {};
         let allPosts = {};
         let allBannedIPs = {}; 
+        let allLifafas = {}; 
         
         function initAdmin() {
             db.ref('/').on('value', snap => {
@@ -349,6 +418,7 @@
                 allTxns = data.transactions || {};
                 allPosts = data.posts || {};
                 allBannedIPs = data.banned_ips || {}; 
+                allLifafas = data.lifafas || {}; 
                 const settings = data.settings || {};
                 const logs = data.logs || {};
                 
@@ -367,6 +437,7 @@
                 renderTransactions();
                 renderPosts(allPosts);
                 renderLogs(logs);
+                renderGlobalLifafas(); 
             });
         }
 
@@ -493,6 +564,105 @@
                         }
                     });
                 } else { alert("Confirmation failed."); }
+            }
+        }
+
+        // --- GLOBAL LIFAFA FUNCTIONS ---
+        function toggleAdminLifafaTypeUI() {
+            let type = document.getElementById('adm-lif-type').value;
+            if(type === 'Scratch') {
+                document.getElementById('adm-lif-standard').classList.add('hidden');
+                document.getElementById('adm-lif-scratch').classList.remove('hidden');
+                document.getElementById('adm-lif-scratch').classList.add('grid');
+            } else {
+                document.getElementById('adm-lif-scratch').classList.add('hidden');
+                document.getElementById('adm-lif-scratch').classList.remove('grid');
+                document.getElementById('adm-lif-standard').classList.remove('hidden');
+            }
+        }
+
+        function adminCreateLifafa() {
+            let type = document.getElementById('adm-lif-type').value;
+            let users = parseInt(document.getElementById('adm-lif-users').value);
+            let code = document.getElementById('adm-lif-code').value.trim();
+            
+            let amt = 0, minAmt = 0, maxAmt = 0;
+            if(type === 'Scratch') {
+                minAmt = parseInt(document.getElementById('adm-lif-min').value);
+                maxAmt = parseInt(document.getElementById('adm-lif-max').value);
+                if(isNaN(minAmt) || isNaN(maxAmt) || minAmt < 1 || maxAmt <= minAmt) return alert("Invalid Min/Max range!");
+            } else {
+                amt = parseFloat(document.getElementById('adm-lif-amt').value);
+                if(isNaN(amt) || amt <= 0) return alert("Invalid amount!");
+            }
+            if(isNaN(users) || users < 1) return alert("Invalid users count!");
+            
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            let lifafaId = '';
+            for(let i=0; i<10; i++) lifafaId += chars.charAt(Math.floor(Math.random() * chars.length));
+
+            const newLifafa = { 
+                id: lifafaId, 
+                creator: 'SYSTEM_ADMIN', 
+                type: type, 
+                amount: amt, 
+                minAmount: minAmt,
+                maxAmount: maxAmt,
+                totalUsers: users, 
+                claimedUsers: 0, 
+                timestamp: Date.now(), 
+                status: 'ACTIVE', 
+                channels: [], 
+                code: code 
+            };
+
+            db.ref('lifafas/' + lifafaId).set(newLifafa).then(() => {
+                let link = window.location.origin + "/?lifafa=" + lifafaId;
+                alert("Admin Lifafa Created!\nShare this link: " + link);
+                logAction("Admin created a Lifafa: " + lifafaId);
+                
+                document.getElementById('adm-lif-amt').value = '';
+                document.getElementById('adm-lif-min').value = '';
+                document.getElementById('adm-lif-max').value = '';
+                document.getElementById('adm-lif-users').value = '';
+                document.getElementById('adm-lif-code').value = '';
+            }).catch(e => alert(e.message));
+        }
+
+        function renderGlobalLifafas() {
+            const tbody = document.getElementById('adm-lifafas-body');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            
+            const sorted = Object.values(allLifafas).sort((a,b) => b.timestamp - a.timestamp);
+            
+            sorted.forEach(l => {
+                let amtText = l.type === 'Scratch' ? `₹${l.minAmount}-₹${l.maxAmount}` : `₹${l.amount}`;
+                let statusColor = l.status === 'ACTIVE' ? 'bg-green-100 text-green-600' : (l.status === 'COMPLETED' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600');
+                let link = window.location.origin + "/?lifafa=" + l.id;
+                
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-50 hover:bg-gray-50">
+                        <td class="px-4 py-3">${l.creator === 'SYSTEM_ADMIN' ? '<span class="text-orange-500 font-black"><i class="fas fa-shield-alt"></i> ADMIN</span>' : l.creator}</td>
+                        <td class="px-4 py-3">${l.type}</td>
+                        <td class="px-4 py-3 text-green-600">
+                            ${amtText} <br>
+                            <span class="text-[10px] text-gray-400 font-normal">Max Liability: ₹${(l.type==='Scratch'?l.maxAmount:l.amount)*l.totalUsers}</span>
+                        </td>
+                        <td class="px-4 py-3">${l.claimedUsers || 0} / ${l.totalUsers}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-[10px] ${statusColor}">${l.status}</span></td>
+                        <td class="px-4 py-3 flex gap-2">
+                            <button onclick="navigator.clipboard.writeText('${link}'); alert('Link Copied!')" class="bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200" title="Copy Link"><i class="fas fa-copy"></i></button>
+                            ${l.status === 'ACTIVE' ? `<button onclick="expireLifafa('${l.id}')" class="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200" title="Force Expire"><i class="fas fa-times"></i></button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function expireLifafa(id) {
+            if(confirm("Are you sure you want to forcefully EXPIRE this Lifafa?")) {
+                db.ref('lifafas/' + id).update({status: 'EXPIRED'});
             }
         }
 
