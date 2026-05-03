@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SwiftPay Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script> 
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        ::-webkit-scrollbar { display: none; }
+        .transition-all { transition: all 0.3s ease; }
+        .admin-view { display: none; }
+        .admin-view.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .stat-card { background: white; border: 1px solid #f3f4f6; border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-[#fdfbf7] font-sans text-gray-800">
+
+    <div id="detailModal" class="fixed inset-0 bg-black bg-opacity-70 z-[2000] hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity duration-300 opacity-0">
+        <div id="detailModalContent" class="bg-white rounded-3xl p-6 transform scale-90 transition-transform duration-300 max-w-md w-full shadow-2xl relative text-center">
+            <div class="w-16 h-16 bg-blue-50 text-blue-600 rounded-full mx-auto flex items-center justify-center text-3xl mb-4 shadow-inner">
+                <i class="fas fa-info-circle"></i>
+            </div>
+            <h2 id="detailModalTitle" class="text-xl font-black text-gray-800 mb-2 uppercase tracking-wide">Detail</h2>
+            <div class="bg-gray-50 rounded-xl p-5 mb-6 border border-gray-200">
+                <p id="detailModalText" class="text-base font-bold text-gray-800 break-all select-all leading-relaxed"></p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="copyDetailText()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-xl shadow-md transition-colors"><i class="fas fa-copy mr-1"></i> COPY</button>
+                <button onclick="closeDetailModal()" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-black py-4 rounded-xl shadow-md transition-colors">BACK</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-login-screen" class="fixed inset-0 bg-[#fdfbf7] z-[1000] flex items-center justify-center p-6">
+        <div class="w-full max-w-md bg-white rounded-3xl p-8 shadow-2xl border border-gray-100">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-blue-600 text-white rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg shadow-blue-200">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <h1 class="text-2xl font-black italic">SWIFT PAY <span class="text-blue-600">ADMIN</span></h1>
+                <p class="text-xs font-bold text-gray-400 mt-1 uppercase tracking-widest">Authorized Access Only</p>
+            </div>
+            <form onsubmit="event.preventDefault(); handleAdminLogin()">
+                <label class="block text-xs font-bold text-gray-400 mb-2">ADMIN EMAIL</label>
+                <input type="email" id="admin-email" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 font-bold" placeholder="admin@swiftpay.com">
+                
+                <label class="block text-xs font-bold text-gray-400 mb-2">SECURE PASSWORD</label>
+                <input type="password" id="admin-pass" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-blue-500 font-bold" placeholder="••••••••">
+                
+                <button type="submit" id="login-btn" class="w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-xl hover:bg-black transition-all tracking-wide">LOGIN TO DASHBOARD</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="admin-main-layout" class="hidden min-h-screen">
+        <header class="bg-white border-b border-gray-100 sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-bolt text-blue-600 text-2xl"></i>
+                <h1 class="text-xl font-black italic text-gray-800">SWIFTPAY <span class="text-blue-600">ADMIN</span></h1>
+            </div>
+            <button onclick="adminLogout()" class="text-red-500 font-bold text-sm bg-red-50 px-4 py-2 rounded-xl hover:bg-red-100 transition-all border border-red-100">
+                <i class="fas fa-sign-out-alt"></i> LOGOUT
+            </button>
+        </header>
+
+        <main class="p-6 max-w-[1400px] mx-auto">
+            
+            <div id="view-dashboard" class="admin-view active">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="stat-card border-l-4 border-l-blue-500 bg-white">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Total Users</p>
+                        <h3 class="text-3xl font-black mt-1 text-gray-800" id="stat-users">0</h3>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-sky-500 bg-white">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Total Wallet Balance</p>
+                        <h3 class="text-3xl font-black mt-1 text-gray-800" id="stat-balance">₹0.00</h3>
+                    </div>
+                    <div class="stat-card border-l-4 border-l-green-500 bg-white">
+                        <p class="text-xs font-bold text-gray-400 uppercase">Total Transactions</p>
+                        <h3 class="text-3xl font-black mt-1 text-gray-800" id="stat-txns">0</h3>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+                    <button onclick="showAdminView('deposits')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-blue-50 border-blue-100 relative">
+                        <span id="badge-deposits" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden shadow-md">0</span>
+                        <i class="fas fa-plus-circle text-2xl text-blue-600"></i>
+                        <span class="text-[10px] font-black uppercase text-blue-800">Deposits</span>
+                    </button>
+                    <button onclick="showAdminView('payouts')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-green-50 border-green-100 relative">
+                        <span id="badge-payouts" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full hidden shadow-md">0</span>
+                        <i class="fas fa-arrow-up text-2xl text-green-600"></i>
+                        <span class="text-[10px] font-black uppercase text-green-800">Payouts</span>
+                    </button>
+                    <button onclick="showAdminView('users')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-indigo-50 border-indigo-100">
+                        <i class="fas fa-users text-2xl text-indigo-600"></i>
+                        <span class="text-[10px] font-black uppercase text-indigo-800">User Manager</span>
+                    </button>
+                    <button onclick="showAdminView('credit-debit')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-purple-50 border-purple-100">
+                        <i class="fas fa-exchange-alt text-2xl text-purple-600"></i>
+                        <span class="text-[10px] font-black uppercase text-purple-800">Credit/Debit</span>
+                    </button>
+                    <button onclick="showAdminView('server-fees')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-emerald-50 border-emerald-100">
+                        <i class="fas fa-server text-2xl text-emerald-600"></i>
+                        <span class="text-[10px] font-black uppercase text-emerald-800">Server Fees</span>
+                    </button>
+                    <button onclick="showAdminView('user-data')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-teal-50 border-teal-100">
+                        <i class="fas fa-id-card text-2xl text-teal-600"></i>
+                        <span class="text-[10px] font-black uppercase text-teal-800">User Data</span>
+                    </button>
+                    <button onclick="showAdminView('gift-codes')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-pink-50 border-pink-100">
+                        <i class="fas fa-gift text-2xl text-pink-600"></i>
+                        <span class="text-[10px] font-black uppercase text-pink-800">Gift Codes</span>
+                    </button>
+                    <button onclick="showAdminView('ban')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-red-50 border-red-100">
+                        <i class="fas fa-user-slash text-2xl text-red-600"></i>
+                        <span class="text-[10px] font-black uppercase text-red-800">Ban/Unban</span>
+                    </button>
+                    <button onclick="showAdminView('official-posts')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-cyan-50 border-cyan-100">
+                        <i class="fas fa-bullhorn text-2xl text-cyan-600"></i>
+                        <span class="text-[10px] font-black uppercase text-cyan-800">Official Post</span>
+                    </button>
+                    <button onclick="showAdminView('database')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-gray-50 border-gray-200">
+                        <i class="fas fa-database text-2xl text-gray-600"></i>
+                        <span class="text-[10px] font-black uppercase text-gray-800">Database</span>
+                    </button>
+                    <button onclick="showAdminView('settings')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-sky-50 border-sky-100">
+                        <i class="fas fa-cog text-2xl text-sky-600"></i>
+                        <span class="text-[10px] font-black uppercase text-sky-800">Settings</span>
+                    </button>
+                    <button onclick="showAdminView('logs')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-slate-100 border-slate-200">
+                        <i class="fas fa-history text-2xl text-slate-600"></i>
+                        <span class="text-[10px] font-black uppercase text-slate-800">Logs</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="view-server-fees" class="admin-view">
+                <h2 class="text-2xl font-black mb-6 text-gray-800">Server Maintenance Fees</h2>
+                <div class="stat-card max-w-md">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">MINIMUM BALANCE OF USER (₹)</label>
+                    <input type="number" id="fee-min-bal" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-emerald-500 font-bold">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">FEES AMOUNT TO DEDUCT (₹)</label>
+                    <input type="number" id="fee-amount" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-emerald-500 font-black text-xl text-red-500">
+                    <button onclick="processServerFees()" class="w-full bg-emerald-500 text-white font-black py-4 rounded-xl hover:bg-emerald-600 transition-colors">DEDUCT FEES NOW</button>
+                    <div id="fee-summary" class="mt-6 hidden bg-emerald-50 p-4 rounded-xl border border-emerald-200 text-sm font-bold text-gray-700"></div>
+                </div>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
+            </div>
+
+            <div id="view-users" class="admin-view">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">User Manager</h2>
+                    <div class="flex items-center gap-3">
+                        <button onclick="resetAllBalances()" class="bg-red-50 border border-red-200 text-red-600 font-bold py-2 px-4 rounded-xl text-sm hover:bg-red-100 transition-colors shadow-sm"><i class="fas fa-exclamation-triangle mr-1"></i> Reset All Balances</button>
+                        <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search mobile/name..." class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-500 shadow-sm">
+                    </div>
+                </div>
+                <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase">
+                            <tr>
+                                <th class="px-6 py-4">Name</th>
+                                <th class="px-6 py-4">Mobile</th>
+                                <th class="px-6 py-4">Wallet</th>
+                                <th class="px-6 py-4">Keeper</th>
+                                <th class="px-6 py-4">Status</th>
+                                <th class="px-6 py-4">Action</th>
+                                <th class="px-6 py-4 border-l border-gray-200 bg-gray-100">Whitelist</th>
+                                <th class="px-6 py-4 border-l border-gray-200 bg-red-50 text-red-600">Device/IP</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-table-body" class="text-sm font-bold"></tbody>
+                    </table>
+                </div>
+                
+                <div class="mt-8 bg-red-50 border border-red-200 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-center gap-4">
+                    <div class="flex-1 text-center md:text-left">
+                        <h3 class="text-lg font-black text-red-700"><i class="fas fa-shield-alt mr-2"></i> Manual IP Ban</h3>
+                        <p class="text-xs font-bold text-red-500 mt-1">Directly ban an IP address even if it's not in the user list above.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <input type="text" id="manual-ip-input" placeholder="e.g. 192.168.1.1" class="w-full sm:w-64 bg-white border border-red-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 shadow-sm font-mono font-bold text-center sm:text-left">
+                        <button onclick="manualBanIP()" class="bg-red-600 text-white font-black px-6 py-3 rounded-xl hover:bg-red-700 transition-colors shadow-md whitespace-nowrap"><i class="fas fa-ban mr-1"></i> BAN IP</button>
+                    </div>
+                </div>
+
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
+            </div>
+
+            <div id="view-deposits" class="admin-view max-w-2xl mx-auto bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black text-blue-600 uppercase">DEPOSITS (UTR)</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
+                <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2 border-b border-gray-50">
+                    <button onclick="setDepositFilter('All')" id="dep-tab-All" class="px-5 py-2 rounded-full border text-sm font-bold whitespace-nowrap border-blue-500 text-blue-600 bg-blue-50 transition-colors">All</button>
+                    <button onclick="setDepositFilter('Pending')" id="dep-tab-Pending" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Pending</button>
+                    <button onclick="setDepositFilter('Success')" id="dep-tab-Success" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Approved</button>
+                    <button onclick="setDepositFilter('Rejected')" id="dep-tab-Rejected" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Rejected</button>
+                </div>
+                <div id="deposit-cards-container" class="grid grid-cols-1 gap-4 pb-4"></div>
+            </div>
+
+            <div id="view-payouts" class="admin-view max-w-2xl mx-auto bg-white rounded-3xl shadow-sm border border-gray-100 p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-black text-green-600 uppercase">PAYOUTS (UPI)</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
+                <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2 border-b border-gray-50">
+                    <button onclick="setPayoutFilter('All')" id="pay-tab-All" class="px-5 py-2 rounded-full border text-sm font-bold whitespace-nowrap border-blue-500 text-blue-600 bg-blue-50 transition-colors">All</button>
+                    <button onclick="setPayoutFilter('Pending')" id="pay-tab-Pending" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Pending</button>
+                    <button onclick="setPayoutFilter('Success')" id="pay-tab-Success" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Success</button>
+                    <button onclick="setPayoutFilter('Rejected')" id="pay-tab-Rejected" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Rejected</button>
+                </div>
+                <div id="payout-cards-container" class="grid grid-cols-1 gap-4 pb-4"></div>
+            </div>
+
+            <div id="view-credit-debit" class="admin-view">
+                <h2 class="text-2xl font-black mb-6 text-gray-800">Manual Credit / Debit</h2>
+                <div class="stat-card max-w-md">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">USER MOBILE NUMBER</label>
+                    <input type="tel" id="cd-mobile" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">AMOUNT (₹)</label>
+                    <input type="number" id="cd-amount" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-blue-500 font-black text-xl">
+                    <div class="grid grid-cols-2 gap-4">
+                        <button onclick="handleCreditDebit('credit')" class="bg-green-500 text-white font-black py-4 rounded-xl shadow-lg shadow-green-100 hover:bg-green-600 transition-colors">CREDIT (+)</button>
+                        <button onclick="handleCreditDebit('debit')" class="bg-red-500 text-white font-black py-4 rounded-xl shadow-lg shadow-red-100 hover:bg-red-600 transition-colors">DEBIT (-)</button>
+                    </div>
+                </div>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
+            </div>
+            
+            <div id="view-settings" class="admin-view">
+                <h2 class="text-2xl font-black mb-6 text-gray-800">System Settings</h2>
+                <div class="stat-card max-w-lg">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">DEPOSIT UPI ID</label>
+                    <input type="text" id="set-upi" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 font-mono">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">TELEGRAM CHANNEL LINK</label>
+                    <input type="text" id="set-channel" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 font-mono">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">CUSTOMER SUPPORT</label>
+                    <input type="text" id="set-support" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 font-mono">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">ADMIN TG CHAT ID</label>
+                    <input type="text" id="set-admin-chat" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-blue-500 font-mono">
+                    <div class="flex items-center gap-3 mb-6 bg-red-50 p-4 rounded-xl border border-red-100">
+                        <input type="checkbox" id="set-maintenance" class="w-5 h-5 accent-red-500 cursor-pointer">
+                        <label for="set-maintenance" class="text-sm font-bold text-red-600 cursor-pointer">Enable App Maintenance Mode</label>
+                    </div>
+                    <button onclick="updateSettings()" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white font-black py-4 rounded-xl shadow-lg shadow-blue-200">SAVE ALL SETTINGS</button>
+                </div>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
+            </div>
+
+            <div id="view-gift-codes" class="admin-view">
+                <h2 class="text-2xl font-black mb-6 text-gray-800">Create Admin Gift Code</h2>
+                <div class="stat-card max-w-md">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">GIFT CODE (5 CHARS)</label>
+                    <input type="text" id="gc-code" maxlength="5" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-pink-500 font-mono uppercase font-black text-xl">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">AMOUNT PER USER (₹)</label>
+                    <input type="number" id="gc-amount" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-pink-500">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">TOTAL USERS</label>
+                    <input type="number" id="gc-users" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-pink-500">
+                    <button onclick="createAdminGiftCode()" class="w-full bg-pink-500 hover:bg-pink-600 transition-colors text-white font-black py-4 rounded-xl shadow-lg shadow-pink-200">GENERATE CODE</button>
+                </div>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
+            </div>
+
+            <div id="view-official-posts" class="admin-view"><h2 class="text-2xl font-black mb-6">Official Posts</h2><div class="stat-card"><textarea id="post-text" class="w-full border p-2 mb-2"></textarea><input type="hidden" id="edit-post-id"><button onclick="savePost()" id="btn-save-post" class="bg-cyan-500 text-white px-4 py-2">Save</button><button onclick="cancelEditPost()" id="btn-cancel-post" class="hidden bg-gray-200 px-4 py-2">Cancel</button></div><div id="posts-container" class="mt-4"></div><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
+            <div id="view-user-data" class="admin-view"><h2 class="text-2xl font-black mb-6">User Data</h2><input type="tel" id="lookup-phone" class="border p-2"><button onclick="lookupUser()" class="bg-teal-500 text-white px-4 py-2">Search</button><div id="lookup-result" class="hidden mt-4"><div id="lookup-basic"></div><pre id="lookup-json"></pre><div id="lookup-txns"></div></div><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
+            <div id="view-database" class="admin-view"><h2 class="text-2xl font-black mb-6">Database</h2><button onclick="refreshDatabaseView()" class="bg-gray-200 px-4 py-2 mb-2">Refresh</button><div id="firebase-db-ui" class="bg-white p-4 border overflow-auto max-h-[400px]"></div><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
+            <div id="view-logs" class="admin-view"><h2 class="text-2xl font-black mb-6">Logs</h2><div id="logs-container" class="bg-white p-4 border max-h-[400px] overflow-auto"></div><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
+            <div id="view-ban" class="admin-view"><h2 class="text-2xl font-black mb-6">Ban/Unban</h2><p>Go to User Manager to Ban/Unban.</p><button onclick="showAdminView('users')" class="bg-blue-500 text-white px-4 py-2 rounded">Go to User Manager</button><br><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- FIREBASE CONFIG (NEW) ---
+        const firebaseConfig = {
+          apiKey: "AIzaSyAiFL9osnzeDSzMmLw0yIiELSqHAblenr0",
+          authDomain: "gateway-4.firebaseapp.com",
+          databaseURL: "https://gateway-4-default-rtdb.firebaseio.com",
+          projectId: "gateway-4",
+          storageBucket: "gateway-4.firebasestorage.app",
+          messagingSenderId: "493956359329",
+          appId: "1:493956359329:web:b41ee86e4154fbfa297ce0"
+        };
+        
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const auth = firebase.auth();
+
+        let depFilter = 'All';
+        let payFilter = 'All';
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('admin-login-screen').classList.add('hidden');
+                document.getElementById('admin-main-layout').classList.remove('hidden');
+                initAdmin();
+            } else {
+                document.getElementById('admin-login-screen').classList.remove('hidden');
+                document.getElementById('admin-main-layout').classList.add('hidden');
+            }
+        });
+
+        function handleAdminLogin() {
+            const email = document.getElementById('admin-email').value;
+            const pass = document.getElementById('admin-pass').value;
+            const loginBtn = document.getElementById('login-btn');
+            loginBtn.innerText = "LOGGING IN..."; loginBtn.disabled = true;
+            auth.signInWithEmailAndPassword(email, pass).catch((e) => { alert("Login Failed: " + e.message); loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false; });
+        }
+        function adminLogout() { auth.signOut().then(() => location.reload()); }
+
+        function showAdminView(viewId) {
+            document.querySelectorAll('.admin-view').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+            if(viewId === 'database') refreshDatabaseView();
+        }
+
+        function openDetailModal(title, text) {
+            document.getElementById('detailModalTitle').innerText = title; document.getElementById('detailModalText').innerText = text; document.getElementById('detailModal').classList.remove('hidden');
+            setTimeout(() => { document.getElementById('detailModal').classList.remove('opacity-0'); document.getElementById('detailModalContent').classList.remove('scale-90'); }, 10);
+        }
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('opacity-0'); document.getElementById('detailModalContent').classList.add('scale-90');
+            setTimeout(() => { document.getElementById('detailModal').classList.add('hidden'); }, 300);
+        }
+        function copyDetailText() { navigator.clipboard.writeText(document.getElementById('detailModalText').innerText); alert("Copied to clipboard!"); }
+
+        // --- DATA INITIALIZATION ---
+        let allUsers = {};
+        let allTxns = {};
+        let allPosts = {};
+        let allBannedIPs = {}; 
+        
+        function initAdmin() {
+            db.ref('/').on('value', snap => {
+                const data = snap.val() || {};
+                allUsers = data.users || {};
+                allTxns = data.transactions || {};
+                allPosts = data.posts || {};
+                allBannedIPs = data.banned_ips || {}; 
+                const settings = data.settings || {};
+                const logs = data.logs || {};
+                
+                let totalBal = 0; Object.values(allUsers).forEach(u => totalBal += (u.balance || 0));
+                document.getElementById('stat-users').innerText = Object.keys(allUsers).length;
+                document.getElementById('stat-balance').innerText = "₹" + totalBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
+                document.getElementById('stat-txns').innerText = Object.keys(allTxns).length;
+
+                document.getElementById('set-upi').value = settings.upiId || '';
+                document.getElementById('set-channel').value = settings.telegramChannel || '';
+                document.getElementById('set-support').value = settings.supportUser || '';
+                document.getElementById('set-admin-chat').value = settings.adminChatId || '';
+                document.getElementById('set-maintenance').checked = settings.maintenance || false;
+
+                renderUserTable();
+                renderTransactions();
+                renderPosts(allPosts);
+                renderLogs(logs);
+            });
+        }
+
+        function renderUserTable(usersObj = allUsers) {
+            const tbody = document.getElementById('user-table-body');
+            tbody.innerHTML = '';
+            
+            const sorted = Object.entries(usersObj).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0));
+
+            sorted.forEach(([phone, user]) => {
+                let isWhitelisted = user.whitelisted || user.isWhitelisted || false;
+                
+                let safeIP = user.ipAddress ? user.ipAddress.replace(/\./g, '_') : '';
+                let isIpBanned = user.ipAddress && allBannedIPs[safeIP];
+                
+                let ipActionBtn = '';
+                if (user.ipAddress) {
+                    if (isIpBanned) {
+                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', true)" class="text-[9px] px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-check mr-1"></i> UNBAN IP</button>`;
+                    } else {
+                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', false)" class="text-[9px] px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-ban mr-1"></i> BAN IP</button>`;
+                    }
+                }
+                
+                tbody.innerHTML += `
+                    <tr class="border-b border-gray-50 hover:bg-gray-50 transition-all">
+                        <td class="px-6 py-4">${user.name}</td>
+                        <td class="px-6 py-4 font-mono">${phone}</td>
+                        <td class="px-6 py-4 text-blue-600 font-black">₹${(user.balance || 0).toFixed(2)}</td>
+                        <td class="px-6 py-4 text-sky-600 font-black">₹${(user.keeperBalance || 0).toFixed(2)}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-2 py-1 rounded-full text-[10px] font-black ${user.isBanned ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
+                                ${user.isBanned ? 'BANNED' : 'ACTIVE'}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 flex gap-2">
+                            <button onclick="toggleBan('${phone}', ${user.isBanned})" class="text-[10px] px-3 py-1 rounded border font-black ${user.isBanned ? 'border-green-500 text-green-500 hover:bg-green-50' : 'border-red-500 text-red-500 hover:bg-red-50'}">
+                                ${user.isBanned ? 'UNBAN' : 'BAN'}
+                            </button>
+                        </td>
+                        <td class="px-6 py-4 border-l border-gray-100 bg-gray-50">
+                            <button onclick="toggleWhitelist('${phone}', ${isWhitelisted})" class="text-[10px] px-3 py-1 rounded font-black border transition-colors ${isWhitelisted ? 'bg-indigo-100 border-indigo-200 text-indigo-600 hover:bg-indigo-200' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-100'}">
+                                ${isWhitelisted ? '<i class="fas fa-star text-yellow-500 mr-1"></i> SAFE' : 'NORMAL'}
+                            </button>
+                        </td>
+                        <td class="px-6 py-4 border-l border-gray-100 ${isIpBanned ? 'bg-red-100/50' : 'bg-red-50/30'}">
+                            <div class="flex flex-col items-start">
+                                <span class="text-[10px] ${isIpBanned ? 'text-red-600 font-black' : 'text-gray-500'} font-mono">${user.ipAddress || 'Unknown IP'}</span>
+                                ${ipActionBtn}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+        function filterUsers() {
+            const query = document.getElementById('user-search').value.toLowerCase();
+            const filtered = {}; Object.entries(allUsers).forEach(([p, u]) => { if(p.includes(query) || (u.name && u.name.toLowerCase().includes(query))) filtered[p] = u; });
+            renderUserTable(filtered);
+        }
+
+        function toggleIPBan(phone, ipAddress, isCurrentlyBanned) {
+            if(!ipAddress || ipAddress === 'unknown') return alert("No valid IP address.");
+            let safeIP = ipAddress.replace(/\./g, '_');
+
+            if (isCurrentlyBanned) {
+                if(confirm('Are you sure you want to UNBAN the device/IP (' + ipAddress + ') for this user?')) {
+                    db.ref('banned_ips/' + safeIP).remove().then(() => logAction('Device/IP ' + ipAddress + ' Unbanned'));
+                }
+            } else {
+                if(confirm('Are you sure you want to permanently BAN the device/IP (' + ipAddress + ')?')) {
+                    db.ref('banned_ips/' + safeIP).set({
+                        bannedAt: Date.now(),
+                        reason: 'Admin Manual Device/IP Ban via User Manager',
+                        phone: phone
+                    }).then(() => logAction('Device/IP ' + ipAddress + ' Banned permanently'));
+                }
+            }
+        }
+
+        function manualBanIP() {
+            const ipInput = document.getElementById('manual-ip-input').value.trim();
+            if(!ipInput) return alert("Please enter a valid IP address!");
+            
+            let safeIP = ipInput.replace(/\./g, '_');
+            
+            if(confirm('Are you sure you want to manually BAN the IP: ' + ipInput + '? Anyone using this IP will instantly face the maintenance screen.')) {
+                db.ref('banned_ips/' + safeIP).set({
+                    bannedAt: Date.now(),
+                    reason: 'Admin Manual Custom IP Ban',
+                    phone: 'Manual Entry'
+                }).then(() => {
+                    logAction('Manually Banned Custom IP: ' + ipInput);
+                    alert("IP Address manually banned successfully!");
+                    document.getElementById('manual-ip-input').value = '';
+                }).catch(e => alert("Error: " + e.message));
+            }
+        }
+
+        function toggleBan(phone, currentStatus) {
+            if(confirm('Are you sure you want to ' + (currentStatus ? 'Unban' : 'Ban') + ' this user?')) {
+                db.ref('users/' + phone).update({ isBanned: !currentStatus }); logAction('User ' + phone + ' was ' + (!currentStatus ? 'Banned' : 'Unbanned'));
+            }
+        }
+        function toggleWhitelist(phone, currentStatus) {
+            const newStatus = !currentStatus;
+            if(confirm('Are you sure you want to ' + (newStatus ? 'Add to Whitelist (Safe Zone)' : 'Remove from Whitelist') + '?')) {
+                db.ref('users/' + phone).update({ isWhitelisted: newStatus, whitelisted: newStatus, isBanned: newStatus ? false : null, status: newStatus ? 'active' : null, banReason: null }).then(() => {
+                    logAction('User ' + phone + ' was ' + (newStatus ? 'Whitelisted' : 'Removed from Whitelist'));
+                    if(newStatus && allUsers[phone] && allUsers[phone].ipAddress) db.ref('banned_ips/' + allUsers[phone].ipAddress.replace(/\./g, '_')).remove();
+                    alert('User is now ' + (newStatus ? 'Whitelisted and Safe' : 'back to Normal limitations') + '.');
+                });
+            }
+        }
+        function resetAllBalances() {
+            if(confirm("⚠️ DANGER: Are you sure you want to reset ALL user balances to ₹0?")) {
+                if(prompt("Type 'RESET' to confirm:") === 'RESET') {
+                    db.ref('users').once('value', snap => {
+                        const users = snap.val(); if(users) {
+                            const updates = {}; Object.keys(users).forEach(p => { updates['users/' + p + '/balance'] = 0; updates['users/' + p + '/keeperBalance'] = 0; });
+                            db.ref('/').update(updates).then(() => { logAction("RESET ALL USER BALANCES TO ZERO"); alert("All user balances have been successfully reset to ₹0."); });
+                        }
+                    });
+                } else { alert("Confirmation failed."); }
+            }
+        }
+
+        function setDepositFilter(filter) { depFilter = filter; renderTransactions(); }
+        function setPayoutFilter(filter) { payFilter = filter; renderTransactions(); }
+        function renderTransactions() { 
+            const depC = document.getElementById('deposit-cards-container'); const payC = document.getElementById('payout-cards-container');
+            depC.innerHTML = ''; payC.innerHTML = ''; let pd = 0, pp = 0;
+            Object.entries(allTxns).sort((a,b) => b[1].timestamp - a[1].timestamp).forEach(([id, t]) => {
+                if(t.status==='Pending' && t.type==='in') pd++; if(t.status==='Pending' && t.type==='out') pp++;
+                const isDep = t.type==='in' && t.title.includes('Deposit'); const isPay = t.type==='out' && t.title.includes('Withdrawal');
+                const badge = t.status==='Pending' ? '<span class="text-orange-500">PENDING</span>' : t.status==='Success'||t.status==='Approved' ? '<span class="text-green-500">SUCCESS</span>' : '<span class="text-red-500">REJECTED</span>';
+                const act = t.status==='Pending' ? '<button onclick="' + (isDep?'processDeposit':'processPayout') + '(\'' + id + '\',true)" class="text-green-600 mr-2 border rounded px-2">Approve</button><button onclick="' + (isDep?'processDeposit':'processPayout') + '(\'' + id + '\',false)" class="text-red-500 border rounded px-2">Reject</button>' : '';
+                const html = '<div class="border p-4 mb-2 rounded bg-gray-50"><p class="font-bold">' + t.name + ' (₹' + t.amount + ') ' + badge + '</p><p class="text-xs text-gray-500">' + t.date + '</p>' + act + '</div>';
+                if(isDep && (depFilter==='All'||t.status===depFilter||(depFilter==='Success'&&t.status==='Approved'))) depC.innerHTML += html;
+                if(isPay && (payFilter==='All'||t.status===payFilter)) payC.innerHTML += html;
+            });
+            document.getElementById('badge-deposits').innerText = pd; pd > 0 ? document.getElementById('badge-deposits').classList.remove('hidden') : document.getElementById('badge-deposits').classList.add('hidden');
+            document.getElementById('badge-payouts').innerText = pp; pp > 0 ? document.getElementById('badge-payouts').classList.remove('hidden') : document.getElementById('badge-payouts').classList.add('hidden');
+        }
+        function processDeposit(txnId, isApprove) {
+            const t = allTxns[txnId]; if(isApprove) { db.ref('users/'+t.receiverId).once('value', s => { const u=s.val(); if(u) { db.ref('users/'+t.receiverId).update({balance:(u.balance||0)+t.amount}); db.ref('transactions/'+txnId).update({status:'Success'}); }}); } else db.ref('transactions/'+txnId).update({status:'Rejected'});
+        }
+        function processPayout(txnId, isApprove) {
+            const t = allTxns[txnId]; if(isApprove) db.ref('transactions/'+txnId).update({status:'Success'}); else { db.ref('users/'+t.senderId).once('value', s => { const u=s.val(); if(u) { db.ref('users/'+t.senderId).update({balance:(u.balance||0)+t.amount}); db.ref('transactions/'+txnId).update({status:'Rejected'}); }}); }
+        }
+        function handleCreditDebit(type) {
+            const p = document.getElementById('cd-mobile').value, a = parseFloat(document.getElementById('cd-amount').value);
+            if(!allUsers[p] || isNaN(a)) return alert("Invalid data!");
+            const nB = type==='credit' ? (allUsers[p].balance||0)+a : (allUsers[p].balance||0)-a;
+            db.ref('users/'+p).update({balance:nB}).then(()=>{ db.ref('transactions/ADMIN'+Date.now()).set({id:'ADMIN'+Date.now(), senderId:type==='credit'?'SYSTEM':p, receiverId:type==='credit'?p:'SYSTEM', amount:a, type:type==='credit'?'in':'out', title:'Admin ' + type, status:'Success', date:new Date().toLocaleString(), timestamp:Date.now()}); logAction('Admin ' + type + ' ₹' + a + ' to ' + p); document.getElementById('cd-amount').value=''; alert("Updated!"); });
+        }
+        function updateSettings() {
+            db.ref('settings').update({ upiId: document.getElementById('set-upi').value, telegramChannel: document.getElementById('set-channel').value, supportUser: document.getElementById('set-support').value, adminChatId: document.getElementById('set-admin-chat').value, maintenance: document.getElementById('set-maintenance').checked }).then(()=>alert("Settings Saved!"));
+        }
+        function createAdminGiftCode() {
+            const c=document.getElementById('gc-code').value.toUpperCase(), a=parseFloat(document.getElementById('gc-amount').value), u=parseInt(document.getElementById('gc-users').value);
+            if(c.length!==5) return alert("5 chars required!"); db.ref('giftcodes/'+c).set({amountPerUser:a, remainingUsers:u, totalUsers:u, createdBy:'ADMIN'}).then(()=>{ alert("Code Created!"); document.getElementById('gc-code').value='';});
+        }
+        function processServerFees() {
+            const min=parseFloat(document.getElementById('fee-min-bal').value), fee=parseFloat(document.getElementById('fee-amount').value); if(isNaN(min)||isNaN(fee)||fee<=0) return;
+            let count=0, tot=0, updates={}; Object.entries(allUsers).forEach(([p, u])=>{ if((u.balance||0)>=min){ updates['users/' + p + '/balance']=(u.balance||0)-fee; count++; tot+=fee; updates['transactions/FEE'+Date.now()+count]={id:'FEE'+Date.now()+count, amount:fee, type:'out', title:'Server Fee', status:'Success', timestamp:Date.now()}; }});
+            if(count>0) db.ref('/').update(updates).then(()=>{ document.getElementById('fee-summary').innerHTML='Users: ' + count + '<br>Total Deducted: ₹' + tot; document.getElementById('fee-summary').classList.remove('hidden'); });
+        }
+        function logAction(msg) { db.ref('logs/LOG'+Date.now()).set({message:msg, timestamp:Date.now(), date:new Date().toLocaleString('en-IN')}); }
+        function renderLogs(logsObj) {
+            const c = document.getElementById('logs-container'); c.innerHTML=''; Object.values(logsObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,50).forEach(l => { c.innerHTML+='<div class="border-b py-2"><span class="text-xs text-gray-500">' + l.date + '</span> ' + l.message + '</div>'; });
+        }
+        function refreshDatabaseView() { document.getElementById('firebase-db-ui').innerHTML = 'DB editing is active.'; }
+        function renderPosts(p) { document.getElementById('posts-container').innerHTML = Object.values(p).length > 0 ? 'Posts loaded.' : 'No posts.'; }
+        function lookupUser() { document.getElementById('lookup-result').classList.remove('hidden'); }
+    </script>
+</body>
+</html>
