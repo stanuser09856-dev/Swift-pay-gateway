@@ -286,7 +286,7 @@ export default async function handler(req, res) {
                 claimedUsers: 0, 
                 timestamp: Date.now(), 
                 status: 'ACTIVE', 
-                channel: (data.channel && data.channel.trim() !== "") ? data.channel.trim() : "",
+                channels: Array.isArray(data.channels) ? data.channels : [], 
                 code: (data.code && data.code.trim() !== "") ? data.code.trim() : "" 
             };
 
@@ -312,7 +312,7 @@ export default async function handler(req, res) {
             }
 
             if (lData.status !== 'ACTIVE') throw new Error("Lifafa is fully claimed or expired.");
-            return res.json({ data: { type: lData.type, channel: lData.channel, hasCode: (lData.code && lData.code.trim() !== "") } });
+            return res.json({ data: { type: lData.type, channels: lData.channels || [], hasCode: (lData.code && lData.code.trim() !== "") } });
         }
 
         if (action === 'CLAIM_LIFAFA') {
