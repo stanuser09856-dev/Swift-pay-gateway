@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getDatabase, ref, get, set, update, increment, runTransaction } from "firebase/database";
+import { getDatabase, ref, get, set, update, increment, runTransaction, query, orderByChild, equalTo } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAiFL9osnzeDSzMmLw0yIiELSqHAblenr0",
@@ -14,7 +14,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Helper to extract and format IP
 const getUserIP = (req) => {
     let ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
     return ip.split(',')[0].trim().replace(/\./g, '_');
@@ -32,7 +31,6 @@ export default async function handler(req, res) {
     const userIP = getUserIP(req);
 
     try {
-        // --- 🛡️ GLOBAL GATEKEEPER & AUTO-BAN LOGIC ---
         let reqPhone = data?.phone || data?.sender || null;
         let userVal = null;
         
@@ -65,9 +63,7 @@ export default async function handler(req, res) {
                 return res.status(403).json({ error: "MAINTENANCE" });
             }
         }
-        // --- END GATEKEEPER ---
 
-        // --- NEW ADMIN ACTIONS ---
         if (action === 'ADMIN_WHITELIST') {
             const uSnap = await get(ref(db, `users/${data.targetPhone}`));
             if (!uSnap.exists()) throw new Error("User not found!");
@@ -99,7 +95,6 @@ export default async function handler(req, res) {
             }
             return res.json({ data: "Success" });
         }
-        // --- END ADMIN ACTIONS ---
 
         if (action === 'CHECK_USER') {
             const snap = await get(ref(db, `users/${data.phone}`));
@@ -116,6 +111,14 @@ export default async function handler(req, res) {
         if (action === 'REGISTER') {
             const snap = await get(ref(db, `users/${data.phone}`));
             if (snap.exists()) throw new Error("Phone number already registered!");
+            
+            // PREVENT SAME TELEGRAM ID CREATION
+            const usersRef = ref(db, 'users');
+            const tgQuery = query(usersRef, orderByChild('tgUserId'), equalTo(data.userObj.tgUserId));
+            const tgSnap = await get(tgQuery);
+            if (tgSnap.exists()) {
+                throw new Error("This Telegram ID is already linked to another account!");
+            }
             
             if(!data.userObj.apiKey) {
                 data.userObj.apiKey = 'SP-' + Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -170,7 +173,7 @@ export default async function handler(req, res) {
                         }
                     });
                 }
-            } catch(e) { console.error("Txn Fetch Error"); }
+            } catch(e) {}
 
             txns.sort((a, b) => b.timestamp - a.timestamp);
 
@@ -304,7 +307,6 @@ export default async function handler(req, res) {
             if (!snap.exists()) throw new Error("Lifafa not found.");
             let lData = snap.val();
             
-            // --- 72 HOURS EXPIRY CHECK ---
             const hoursOld = (Date.now() - (lData.timestamp || 0)) / (1000 * 60 * 60);
             if (hoursOld > 72 && lData.status === 'ACTIVE') {
                 await update(ref(db, `lifafas/${data.code}`), { status: 'EXPIRED' });
@@ -315,14 +317,31 @@ export default async function handler(req, res) {
             return res.json({ data: { type: lData.type, channels: lData.channels || [], hasCode: (lData.code && lData.code.trim() !== "") } });
         }
 
+        if (action === 'GET_MY_LIFAFAS') {
+            const lifafaRef = ref(db, 'lifafas');
+            const creatorQuery = query(lifafaRef, orderByChild('creator'), equalTo(data.phone));
+            const snap = await get(creatorQuery);
+            let myLifafas = [];
+            if (snap.exists()) {
+                snap.forEach(child => {
+                    let lData = child.val();
+                    const hoursOld = (Date.now() - (lData.timestamp || 0)) / (1000 * 60 * 60);
+                    if (hoursOld > 72 && lData.status === 'ACTIVE') {
+                        lData.status = 'EXPIRED';
+                        update(ref(db, `lifafas/${lData.id}`), { status: 'EXPIRED' }).catch(()=>{});
+                    }
+                    myLifafas.push(lData);
+                });
+            }
+            return res.json({ data: myLifafas });
+        }
+
         if (action === 'CLAIM_LIFAFA') {
             const lifafaRef = ref(db, `lifafas/${data.code}`);
             const lifafaSnap = await get(lifafaRef);
             if (!lifafaSnap.exists()) throw new Error("Lifafa not found.");
             
             let lData = lifafaSnap.val();
-            
-            // --- 72 HOURS EXPIRY CHECK ---
             const hoursOld = (Date.now() - (lData.timestamp || 0)) / (1000 * 60 * 60);
             if (hoursOld > 72) {
                 if (lData.status === 'ACTIVE') await update(lifafaRef, { status: 'EXPIRED' });
@@ -342,20 +361,17 @@ export default async function handler(req, res) {
                 if (currentData === null) return null; 
                 if (currentData.status !== 'ACTIVE') return;
                 
-                // --- ANTI-FRAUD / ANTI-CHEAT CHECKS ---
-                if (currentData.claimers && currentData.claimers[data.phone]) return; // Phone already claimed
-                if (currentData.claimedIPs && currentData.claimedIPs[userIP]) return; // Device/IP already claimed
-                
+                if (currentData.claimers && currentData.claimers[data.phone]) return;
+                if (currentData.claimedIPs && currentData.claimedIPs[userIP]) return;
                 if (currentData.claimedUsers >= currentData.totalUsers) return; 
 
-                // Process Claim
                 currentData.claimedUsers = (currentData.claimedUsers || 0) + 1;
                 
                 if (!currentData.claimers) currentData.claimers = {};
                 currentData.claimers[data.phone] = true;
                 
                 if (!currentData.claimedIPs) currentData.claimedIPs = {};
-                currentData.claimedIPs[userIP] = true; // Mark IP as claimed
+                currentData.claimedIPs[userIP] = true; 
 
                 if (currentData.claimedUsers >= currentData.totalUsers) currentData.status = 'COMPLETED';
                 return currentData;
@@ -364,8 +380,6 @@ export default async function handler(req, res) {
             if (!result.committed) throw new Error("Lifafa invalid, fully claimed, or already claimed by your device!");
             
             let resultData = result.snapshot.val();
-            
-            // --- REWARD CALCULATION ---
             if (resultData.type === 'Scratch') {
                 let min = Number(resultData.minAmount) || 1;
                 let max = Number(resultData.maxAmount) || Number(resultData.amount) || 1;
@@ -373,12 +387,11 @@ export default async function handler(req, res) {
             } else if (resultData.type === 'Toss') {
                 wonAmount = Math.random() < 0.5 ? Number(resultData.amount) : 0;
             } else {
-                wonAmount = Number(resultData.amount); // Standard
+                wonAmount = Number(resultData.amount);
             }
 
             const updates = {};
             updates[`users/${data.phone}/balance`] = increment(wonAmount);
-            
             if (wonAmount > 0) {
                 updates[`transactions/${data.txn.id}`] = { ...data.txn, amount: wonAmount };
             }
