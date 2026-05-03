@@ -87,10 +87,13 @@
         <p class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-8">Enter details to grab it</p>
 
         <div id="lifafa-step-1" class="hidden w-full max-w-sm bg-white rounded-3xl p-6 shadow-xl shadow-gray-200/50 border border-gray-100 mb-4">
-            <label class="block text-xs font-bold text-gray-400 mb-4 tracking-wide uppercase">Step 1: Join Channel</label>
-            <p id="lifafa-join-error" class="hidden text-xs text-red-500 font-bold mb-3 bg-red-50 py-2 rounded-lg border border-red-100">First join the channel!</p>
-            <a id="lifafa-channel-btn" href="#" target="_blank" onclick="window.isChannelClicked = true; document.getElementById('lifafa-join-error').classList.add('hidden');" class="block w-full bg-indigo-50 text-indigo-600 font-black py-4 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors mb-3"><i class="fab fa-telegram-plane mr-2 text-xl"></i> JOIN CHANNEL</a>
-            <button type="button" onclick="verifyLifafaJoin()" class="btn-animate w-full bg-green-500 text-white font-black py-4 rounded-xl shadow-lg shadow-green-200">Verify & Continue</button>
+            <label class="block text-xs font-bold text-gray-400 mb-4 tracking-wide uppercase">Step 1: Join All Channels</label>
+            <p id="lifafa-join-error" class="hidden text-xs text-red-500 font-bold mb-3 bg-red-50 py-2 rounded-lg border border-red-100">Please join all channels first!</p>
+            
+            <div id="lifafa-channels-list" class="max-h-60 overflow-y-auto mb-3 pr-2">
+                </div>
+            
+            <button type="button" onclick="verifyLifafaJoin()" class="btn-animate w-full bg-green-500 text-white font-black py-4 rounded-xl shadow-lg shadow-green-200 mt-2">Verify & Continue</button>
         </div>
 
         <form id="form-public-lifafa" onsubmit="event.preventDefault(); processPublicLifafaClaim()" class="w-full max-w-sm bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/50 border border-gray-100 text-left">
@@ -570,8 +573,11 @@
 
             <div id="lifafa-create" class="lifafa-tab-content active px-5 pb-24">
                 <form onsubmit="event.preventDefault(); processLifafaCreate()" class="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
-                    <label class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Telegram Channel Link (Optional)</label>
-                    <input type="url" id="lif-channel" placeholder="https://t.me/yourchannel" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold mb-5 focus:outline-none focus:border-indigo-500">
+                    <label class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Telegram Channels (Max 8, Optional)</label>
+                    <div id="lif-channels-container">
+                        <input type="url" class="lif-channel-input w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold mb-3 focus:outline-none focus:border-indigo-500" placeholder="https://t.me/yourchannel_1">
+                    </div>
+                    <button type="button" onclick="addLifafaChannelInput()" class="w-full bg-indigo-50 text-indigo-600 font-black py-3 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors mb-5 text-xs"><i class="fas fa-plus mr-1"></i> ADD MORE CHANNEL</button>
 
                     <label class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Access Code / Password (Optional)</label>
                     <input type="text" id="lif-code" placeholder="Leave blank for public" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold mb-5 focus:outline-none focus:border-indigo-500 uppercase tracking-widest">
@@ -1738,7 +1744,7 @@
             } catch(e) { showToast(e.message); }
         }
 
-        // --- LIFAFA SYSTEM LOGIC ---
+        // --- LIFAFA SYSTEM LOGIC (8 CHANNELS + OPTIONAL) ---
         function switchLifafaTab(tabId) {
             document.querySelectorAll('.lifafa-tab-btn').forEach(btn => {
                 btn.classList.remove('active', 'bg-gray-900', 'text-white');
@@ -1769,12 +1775,30 @@
             }
         }
 
+        function addLifafaChannelInput() {
+            const container = document.getElementById('lif-channels-container');
+            const currentInputs = container.querySelectorAll('.lif-channel-input').length;
+            if (currentInputs >= 8) {
+                return showToast("Maximum 8 channels allowed!");
+            }
+            const input = document.createElement('input');
+            input.type = 'url';
+            input.className = 'lif-channel-input w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold mb-3 focus:outline-none focus:border-indigo-500';
+            input.placeholder = 'https://t.me/yourchannel_' + (currentInputs + 1);
+            container.appendChild(input);
+        }
+
         async function processLifafaCreate() {
             if(!checkCooldown()) return;
             let type = document.getElementById('lif-type').value;
-            let channel = document.getElementById('lif-channel').value;
             let code = document.getElementById('lif-code').value;
             let users = parseInt(document.getElementById('lif-users').value);
+            
+            let channelInputs = document.querySelectorAll('.lif-channel-input');
+            let channels = [];
+            channelInputs.forEach(input => {
+                if(input.value.trim() !== '') channels.push(input.value.trim());
+            });
             
             let amt = 0, minAmt = 0, maxAmt = 0;
             if(type === 'Scratch') {
@@ -1788,7 +1812,6 @@
 
             if(isNaN(users) || users < 1) return showToast("Invalid users count!");
 
-            // Balance Deduction Logic Match
             let totalDeduct = type === 'Scratch' ? (maxAmt * users) : (amt * users);
             if(totalDeduct > currentBalance) return alert(`Insufficient Balance! Need ₹${totalDeduct} in Wallet.`);
 
@@ -1798,7 +1821,7 @@
                 let lifafaId = await apiCall('CREATE_LIFAFA', { 
                     phone: currentUser.phone, 
                     type: type, amount: amt, minAmount: minAmt, maxAmount: maxAmt, 
-                    totalUsers: users, channel: channel, code: code, txn: txn 
+                    totalUsers: users, channels: channels, code: code, txn: txn 
                 });
                 
                 let shareLink = window.location.origin + "/?lifafa=" + lifafaId;
@@ -1830,11 +1853,34 @@
                 document.getElementById('public-lifafa-wrapper').classList.remove('hidden');
                 document.getElementById('public-lifafa-wrapper').classList.add('flex');
                 
-                if (info.channel && info.channel !== "") {
+                if (info.channels && info.channels.length > 0) {
                     document.getElementById('lifafa-step-1').classList.remove('hidden');
                     document.getElementById('form-public-lifafa').classList.add('hidden');
-                    document.getElementById('lifafa-channel-btn').href = info.channel;
-                    window.isChannelClicked = false;
+                    
+                    const container = document.getElementById('lifafa-channels-list');
+                    container.innerHTML = '';
+                    window.lifafaChannelsJoined = 0;
+                    window.lifafaTotalChannels = info.channels.length;
+                    
+                    info.channels.forEach((link, index) => {
+                        let a = document.createElement('a');
+                        a.href = link;
+                        a.target = '_blank';
+                        a.className = 'block w-full bg-indigo-50 text-indigo-600 font-black py-4 px-4 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors mb-2 text-center text-sm';
+                        a.innerHTML = `<i class="fab fa-telegram-plane mr-2 text-lg"></i> JOIN CHANNEL ${index + 1}`;
+                        a.onclick = function() {
+                            if (!this.classList.contains('joined')) {
+                                this.classList.add('joined');
+                                this.classList.replace('bg-indigo-50', 'bg-green-50');
+                                this.classList.replace('text-indigo-600', 'text-green-600');
+                                this.classList.replace('border-indigo-100', 'border-green-100');
+                                this.innerHTML = `<i class="fas fa-check-circle mr-2 text-lg"></i> JOINED CHANNEL ${index + 1}`;
+                                window.lifafaChannelsJoined++;
+                                document.getElementById('lifafa-join-error').classList.add('hidden');
+                            }
+                        };
+                        container.appendChild(a);
+                    });
                 } else {
                     document.getElementById('lifafa-step-1').classList.add('hidden');
                     document.getElementById('form-public-lifafa').classList.remove('hidden');
@@ -1852,11 +1898,12 @@
         }
 
         function verifyLifafaJoin() {
-            if(window.isChannelClicked) {
+            if(window.lifafaTotalChannels > 0 && window.lifafaChannelsJoined >= window.lifafaTotalChannels) {
                 document.getElementById('lifafa-step-1').classList.add('hidden');
                 document.getElementById('form-public-lifafa').classList.remove('hidden');
             } else {
                 document.getElementById('lifafa-join-error').classList.remove('hidden');
+                document.getElementById('lifafa-join-error').innerText = `Join all ${window.lifafaTotalChannels} channels to continue!`;
             }
         }
 
