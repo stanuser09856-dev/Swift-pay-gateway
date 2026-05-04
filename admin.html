@@ -285,7 +285,10 @@
             </div>
 
             <div id="view-server-fees" class="admin-view">
-                <h2 class="text-2xl font-black mb-6 text-gray-800">Server Maintenance Fees</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">Server Maintenance Fees</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
                 <div class="stat-card max-w-md">
                     <label class="block text-xs font-bold text-gray-400 mb-2">MINIMUM BALANCE OF USER (₹)</label>
                     <input type="number" id="fee-min-bal" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-emerald-500 font-bold">
@@ -294,13 +297,13 @@
                     <button onclick="processServerFees()" class="w-full bg-emerald-500 text-white font-black py-4 rounded-xl hover:bg-emerald-600 transition-colors">DEDUCT FEES NOW</button>
                     <div id="fee-summary" class="mt-6 hidden bg-emerald-50 p-4 rounded-xl border border-emerald-200 text-sm font-bold text-gray-700"></div>
                 </div>
-                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
             </div>
 
             <div id="view-users" class="admin-view">
                 <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-black text-gray-800">User Manager</h2>
                     <div class="flex items-center gap-3">
+                        <button id="btn-reset-balances" onclick="resetAllBalances()" class="hidden bg-red-50 border border-red-200 text-red-600 font-bold py-2 px-4 rounded-xl text-sm hover:bg-red-100 transition-colors shadow-sm"><i class="fas fa-exclamation-triangle mr-1"></i> Reset All Balances</button>
                         <input type="text" id="user-search" oninput="filterUsers()" placeholder="Search mobile/name..." class="bg-white border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-500 shadow-sm">
                     </div>
                 </div>
@@ -311,12 +314,26 @@
                                 <th class="px-6 py-4">Name</th>
                                 <th class="px-6 py-4">Mobile</th>
                                 <th class="px-6 py-4">Wallet</th>
+                                <th class="px-6 py-4">Keeper</th>
                                 <th class="px-6 py-4">Status</th>
                                 <th class="px-6 py-4">Action</th>
+                                <th class="px-6 py-4 border-l border-gray-200 bg-gray-100">Whitelist</th>
+                                <th class="px-6 py-4 border-l border-gray-200 bg-red-50 text-red-600">Device/IP</th>
                             </tr>
                         </thead>
                         <tbody id="user-table-body" class="text-sm font-bold"></tbody>
                     </table>
+                </div>
+                
+                <div class="mt-8 bg-red-50 border border-red-200 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row items-center gap-4">
+                    <div class="flex-1 text-center md:text-left">
+                        <h3 class="text-lg font-black text-red-700"><i class="fas fa-shield-alt mr-2"></i> Manual IP Ban</h3>
+                        <p class="text-xs font-bold text-red-500 mt-1">Directly ban an IP address even if it's not in the user list above.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <input type="text" id="manual-ip-input" placeholder="e.g. 192.168.1.1" class="w-full sm:w-64 bg-white border border-red-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-red-500 shadow-sm font-mono font-bold text-center sm:text-left">
+                        <button onclick="manualBanIP()" class="bg-red-600 text-white font-black px-6 py-3 rounded-xl hover:bg-red-700 transition-colors shadow-md whitespace-nowrap"><i class="fas fa-ban mr-1"></i> BAN IP</button>
+                    </div>
                 </div>
                 <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back to Dashboard</button>
             </div>
@@ -329,6 +346,8 @@
                 <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2 border-b border-gray-50">
                     <button onclick="setDepositFilter('All')" id="dep-tab-All" class="px-5 py-2 rounded-full border text-sm font-bold whitespace-nowrap border-blue-500 text-blue-600 bg-blue-50 transition-colors">All</button>
                     <button onclick="setDepositFilter('Pending')" id="dep-tab-Pending" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Pending</button>
+                    <button onclick="setDepositFilter('Success')" id="dep-tab-Success" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Approved</button>
+                    <button onclick="setDepositFilter('Rejected')" id="dep-tab-Rejected" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Rejected</button>
                 </div>
                 <div id="deposit-cards-container" class="grid grid-cols-1 gap-4 pb-4"></div>
             </div>
@@ -341,12 +360,17 @@
                 <div class="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2 border-b border-gray-50">
                     <button onclick="setPayoutFilter('All')" id="pay-tab-All" class="px-5 py-2 rounded-full border text-sm font-bold whitespace-nowrap border-blue-500 text-blue-600 bg-blue-50 transition-colors">All</button>
                     <button onclick="setPayoutFilter('Pending')" id="pay-tab-Pending" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Pending</button>
+                    <button onclick="setPayoutFilter('Success')" id="pay-tab-Success" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Success</button>
+                    <button onclick="setPayoutFilter('Rejected')" id="pay-tab-Rejected" class="px-5 py-2 rounded-full border border-gray-200 text-gray-500 text-sm font-bold whitespace-nowrap hover:bg-gray-50 transition-colors">Rejected</button>
                 </div>
                 <div id="payout-cards-container" class="grid grid-cols-1 gap-4 pb-4"></div>
             </div>
 
             <div id="view-credit-debit" class="admin-view">
-                <h2 class="text-2xl font-black mb-6 text-gray-800">Manual Credit / Debit</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">Manual Credit / Debit</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
                 <div class="stat-card max-w-md">
                     <label class="block text-xs font-bold text-gray-400 mb-2">USER MOBILE NUMBER</label>
                     <input type="tel" id="cd-mobile" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500">
@@ -357,11 +381,13 @@
                         <button onclick="handleCreditDebit('debit')" class="bg-red-500 text-white font-black py-4 rounded-xl shadow-lg shadow-red-100 hover:bg-red-600 transition-colors">DEBIT (-)</button>
                     </div>
                 </div>
-                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
             </div>
             
             <div id="view-settings" class="admin-view">
-                <h2 class="text-2xl font-black mb-6 text-gray-800">System Settings</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">System Settings</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
                 <div class="stat-card max-w-lg">
                     <label class="block text-xs font-bold text-gray-400 mb-2">DEPOSIT UPI ID</label>
                     <input type="text" id="set-upi" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-blue-500 font-mono">
@@ -377,11 +403,13 @@
                     </div>
                     <button onclick="updateSettings()" class="w-full bg-blue-600 hover:bg-blue-700 transition-colors text-white font-black py-4 rounded-xl shadow-lg shadow-blue-200">SAVE ALL SETTINGS</button>
                 </div>
-                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
             </div>
 
             <div id="view-gift-codes" class="admin-view">
-                <h2 class="text-2xl font-black mb-6 text-gray-800">Create Admin Gift Code</h2>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">Create Admin Gift Code</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
                 <div class="stat-card max-w-md">
                     <label class="block text-xs font-bold text-gray-400 mb-2">GIFT CODE (5 CHARS)</label>
                     <input type="text" id="gc-code" maxlength="5" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-4 focus:outline-none focus:border-pink-500 font-mono uppercase font-black text-xl">
@@ -391,14 +419,41 @@
                     <input type="number" id="gc-users" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-6 focus:outline-none focus:border-pink-500">
                     <button onclick="createAdminGiftCode()" class="w-full bg-pink-500 hover:bg-pink-600 transition-colors text-white font-black py-4 rounded-xl shadow-lg shadow-pink-200">GENERATE CODE</button>
                 </div>
-                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold hover:text-blue-600 transition-colors"><i class="fas fa-arrow-left"></i> Back</button>
             </div>
 
-            <div id="view-official-posts" class="admin-view"><h2 class="text-2xl font-black mb-6">Official Posts</h2><div class="stat-card"><textarea id="post-text" class="w-full border p-2 mb-2"></textarea><button onclick="savePost()" class="bg-cyan-500 text-white px-4 py-2">Save</button></div><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
-            <div id="view-user-data" class="admin-view"><h2 class="text-2xl font-black mb-6">User Data</h2><input type="tel" id="lookup-phone" class="border p-2"><button onclick="lookupUser()" class="bg-teal-500 text-white px-4 py-2">Search</button><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
-            <div id="view-database" class="admin-view"><h2 class="text-2xl font-black mb-6">Database</h2><p>Restricted access to full database editing.</p><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
-            <div id="view-logs" class="admin-view"><h2 class="text-2xl font-black mb-6">Logs</h2><div id="logs-container" class="bg-white p-4 border max-h-[400px] overflow-auto"></div><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
-            <div id="view-ban" class="admin-view"><h2 class="text-2xl font-black mb-6">Ban/Unban</h2><p>Manage Bans from User Manager.</p><button onclick="showAdminView('dashboard')" class="mt-6">Back</button></div>
+            <div id="view-official-posts" class="admin-view">
+                <h2 class="text-2xl font-black mb-6">Official Posts</h2>
+                <div class="stat-card max-w-lg">
+                    <textarea id="post-text" class="w-full border p-2 mb-2 rounded-xl" rows="4"></textarea>
+                    <button onclick="savePost()" class="bg-cyan-500 text-white font-black px-4 py-3 rounded-xl w-full">Save Post</button>
+                </div>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold">Back</button>
+            </div>
+            
+            <div id="view-user-data" class="admin-view">
+                <h2 class="text-2xl font-black mb-6">User Data</h2>
+                <p>Lookup details feature...</p>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold">Back</button>
+            </div>
+            
+            <div id="view-database" class="admin-view">
+                <h2 class="text-2xl font-black mb-6">Database</h2>
+                <p>Raw database viewer...</p>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold">Back</button>
+            </div>
+            
+            <div id="view-logs" class="admin-view">
+                <h2 class="text-2xl font-black mb-6">System Logs</h2>
+                <div id="logs-container" class="bg-white p-4 border rounded-xl max-h-[400px] overflow-auto"></div>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold">Back</button>
+            </div>
+            
+            <div id="view-ban" class="admin-view">
+                <h2 class="text-2xl font-black mb-6">Ban/Unban</h2>
+                <p class="mb-4">Go to User Manager to Ban/Unban specific users or IPs.</p>
+                <button onclick="showAdminView('users')" class="bg-blue-500 text-white font-black px-4 py-2 rounded-xl shadow-md hover:bg-blue-600 transition-colors">Go to User Manager</button><br>
+                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold">Back</button>
+            </div>
 
         </main>
     </div>
@@ -414,13 +469,12 @@
 
         let depFilter = 'All';
         let payFilter = 'All';
-        
         let currentSubAdmin = null;
 
-        // Permissions List mapping
+        // Features/Permissions List mapping
         const allPermissionKeys = ['deposits', 'payouts', 'users', 'lifafa', 'credit-debit', 'server-fees', 'user-data', 'gift-codes', 'ban', 'official-posts', 'database', 'settings', 'logs'];
 
-        // UI Prep based on Mode
+        // UI Preperation based on Admin Mode
         if (window.ADMIN_MODE === 'RESTRICTED') {
             document.getElementById('login-title').innerHTML = `RESTRICTED <span class="text-orange-500">ADMIN</span>`;
             document.getElementById('login-icon-bg').className = 'w-20 h-20 bg-orange-500 text-white rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg shadow-orange-200';
@@ -428,22 +482,28 @@
             document.getElementById('header-mode-text').innerText = 'STAFF';
             document.getElementById('header-mode-text').className = 'text-orange-500';
         } else if (window.ADMIN_MODE === 'SUPER') {
+            // Show Sub-Admins manager only to SUPER ADMIN
             document.getElementById('btn-subadmins').classList.remove('hidden');
             document.getElementById('btn-subadmins').classList.add('flex');
+            
+            // Allow resetting all balances only to SUPER ADMIN
+            document.getElementById('btn-reset-balances').classList.remove('hidden');
         }
 
-        // Initialize Checkboxes for Sub-Admin Creation
+        // Initialize Checkboxes for Sub-Admin Creation Form
         const pGrid = document.getElementById('sa-permissions-grid');
-        allPermissionKeys.forEach(p => {
-            pGrid.innerHTML += `
-                <div class="flex items-center gap-2">
-                    <input type="checkbox" id="perm_${p}" checked class="w-4 h-4 accent-yellow-500">
-                    <label for="perm_${p}" class="text-xs font-bold text-gray-700 uppercase">${p.replace('-', ' ')}</label>
-                </div>
-            `;
-        });
+        if(pGrid) {
+            allPermissionKeys.forEach(p => {
+                pGrid.innerHTML += `
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="perm_${p}" checked class="w-4 h-4 accent-yellow-500">
+                        <label for="perm_${p}" class="text-[10px] font-bold text-gray-700 uppercase">${p.replace('-', ' ')}</label>
+                    </div>
+                `;
+            });
+        }
 
-        // Send TG Message
+        // Send Telegram Notification
         async function sendTGMessage(chatId, text) {
             try {
                 if(!chatId) return;
@@ -451,16 +511,20 @@
             } catch (e) {}
         }
 
+        // --- SINGLE AUTH LISTENER ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 if (window.ADMIN_MODE === 'RESTRICTED') {
                     let code = localStorage.getItem('restrictedAdminCode');
-                    if (!code) { adminLogout(); return; }
+                    if (!code) { 
+                        adminLogout(); 
+                        return; 
+                    }
                     
-                    // Live Sync for Permissions
+                    // Live Sync for Restricted Permissions
                     db.ref('admins/' + code).on('value', snap => {
                         if (!snap.exists()) {
-                            alert("Admin Code Deleted. Access Revoked.");
+                            alert("Admin Code Deleted or Invalid. Access Revoked.");
                             adminLogout();
                             return;
                         }
@@ -477,10 +541,10 @@
                                 showAdminView('dashboard');
                             }
                         }
-                        
                         proceedToDashboard();
                     });
                 } else {
+                    // Super Admin
                     proceedToDashboard();
                 }
             } else {
@@ -513,43 +577,56 @@
         function handleAdminLogin() {
             const email = document.getElementById('admin-email').value;
             const pass = document.getElementById('admin-pass').value;
-            const code = document.getElementById('admin-code').value.trim();
             const loginBtn = document.getElementById('login-btn');
 
-            if (window.ADMIN_MODE === 'RESTRICTED' && !code) {
-                return alert("Admin Unique Code is required!");
-            }
-
-            loginBtn.innerText = "LOGGING IN..."; loginBtn.disabled = true;
-
-            auth.signInWithEmailAndPassword(email, pass).then(() => {
-                if (window.ADMIN_MODE === 'RESTRICTED') {
-                    db.ref('admins/' + code).once('value', snap => {
-                        if (snap.exists()) {
-                            localStorage.setItem('restrictedAdminCode', code);
-                            let adminData = snap.val();
+            if (window.ADMIN_MODE === 'RESTRICTED') {
+                const code = document.getElementById('admin-code').value.trim();
+                if (!code) return alert("Admin Unique Code is required!");
+                
+                loginBtn.innerText = "VERIFYING CODE..."; 
+                loginBtn.disabled = true;
+                
+                // RESTRICTED: Verify Code BEFORE signing in to prevent race conditions
+                db.ref('admins/' + code).once('value', snap => {
+                    if (snap.exists()) {
+                        // Code is valid
+                        localStorage.setItem('restrictedAdminCode', code);
+                        let adminData = snap.val();
+                        
+                        loginBtn.innerText = "LOGGING IN...";
+                        auth.signInWithEmailAndPassword(email, pass).then(() => {
                             sendTGMessage(adminData.tgId, `🚨 Login Detected for Restricted Admin: ${adminData.name}`);
-                            // Listener will trigger `proceedToDashboard`
-                        } else {
-                            auth.signOut();
-                            alert("Invalid Admin Unique Code!");
+                        }).catch(e => {
+                            alert("Login Failed: " + e.message);
+                            localStorage.removeItem('restrictedAdminCode'); // Cleanup on fail
                             loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false;
-                        }
-                    });
-                }
-                // Super Admin directly logs in via listener
-            }).catch((e) => { 
-                alert("Login Failed: " + e.message); 
-                loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false; 
-            });
+                        });
+                    } else {
+                        alert("Invalid Admin Unique Code!");
+                        loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false;
+                    }
+                });
+            } else {
+                // SUPER ADMIN: Direct Login
+                loginBtn.innerText = "LOGGING IN..."; 
+                loginBtn.disabled = true;
+                
+                auth.signInWithEmailAndPassword(email, pass).catch(e => {
+                    alert("Login Failed: " + e.message);
+                    loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false;
+                });
+            }
         }
 
         function adminLogout() { 
-            localStorage.removeItem('restrictedAdminCode');
+            if(window.ADMIN_MODE === 'RESTRICTED') {
+                localStorage.removeItem('restrictedAdminCode');
+            }
             auth.signOut().then(() => location.reload()); 
         }
 
         function showAdminView(viewId) {
+            // Permission check for routing
             if (window.ADMIN_MODE === 'RESTRICTED' && viewId !== 'dashboard') {
                 if (!currentSubAdmin || !currentSubAdmin.permissions || !currentSubAdmin.permissions[viewId]) {
                     return alert("You do not have permission to view this section.");
@@ -561,9 +638,9 @@
 
         function openDetailModal(title, text) { document.getElementById('detailModalTitle').innerText = title; document.getElementById('detailModalText').innerText = text; document.getElementById('detailModal').classList.remove('hidden'); setTimeout(() => { document.getElementById('detailModal').classList.remove('opacity-0'); document.getElementById('detailModalContent').classList.remove('scale-90'); }, 10); }
         function closeDetailModal() { document.getElementById('detailModal').classList.add('opacity-0'); document.getElementById('detailModalContent').classList.add('scale-90'); setTimeout(() => { document.getElementById('detailModal').classList.add('hidden'); }, 300); }
-        function copyDetailText() { navigator.clipboard.writeText(document.getElementById('detailModalText').innerText); alert("Copied!"); }
+        function copyDetailText() { navigator.clipboard.writeText(document.getElementById('detailModalText').innerText); alert("Copied to clipboard!"); }
 
-        // --- SUB ADMIN MANAGER ---
+        // --- SUB ADMIN MANAGER FUNCTIONS ---
         function generateAlphanumeric(length) {
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let res = ''; for(let i=0; i<length; i++) res += chars.charAt(Math.floor(Math.random() * chars.length)); return res;
@@ -579,22 +656,19 @@
             const code = generateAlphanumeric(10);
             
             db.ref('admins/' + code).set({
-                name: name,
-                tgId: tg,
-                code: code,
-                permissions: permissions,
-                createdAt: Date.now()
+                name: name, tgId: tg, code: code, permissions: permissions, createdAt: Date.now()
             }).then(() => {
                 alert("Sub-Admin Generated Successfully!\nCode: " + code);
-                document.getElementById('sa-name').value = '';
-                document.getElementById('sa-tg').value = '';
+                document.getElementById('sa-name').value = ''; document.getElementById('sa-tg').value = '';
             });
         }
 
         function renderSubAdminsTable(admins) {
             const tbody = document.getElementById('subadmins-body');
+            if(!tbody) return;
             tbody.innerHTML = '';
             if(!admins) return;
+            
             Object.values(admins).forEach(admin => {
                 let pCount = Object.values(admin.permissions || {}).filter(v=>v).length;
                 tbody.innerHTML += `
@@ -604,7 +678,7 @@
                         <td class="px-4 py-3 font-mono text-orange-600 font-black tracking-widest">${admin.code}</td>
                         <td class="px-4 py-3">${pCount} Features</td>
                         <td class="px-4 py-3 flex gap-2">
-                            <button onclick="openEditSubAdmin('${admin.code}')" class="bg-blue-100 text-blue-600 px-3 py-1 rounded hover:bg-blue-200"><i class="fas fa-edit"></i> Edit</button>
+                            <button onclick="openEditSubAdmin('${admin.code}')" class="bg-blue-100 text-blue-600 px-3 py-1 rounded hover:bg-blue-200"><i class="fas fa-edit"></i></button>
                             <button onclick="deleteSubAdmin('${admin.code}')" class="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
@@ -635,7 +709,7 @@
                     cBox.innerHTML += `
                         <div class="flex items-center gap-2">
                             <input type="checkbox" id="edit_perm_${p}" ${isChecked} class="w-4 h-4 accent-blue-500">
-                            <label for="edit_perm_${p}" class="text-xs font-bold text-gray-700 uppercase">${p.replace('-', ' ')}</label>
+                            <label for="edit_perm_${p}" class="text-[10px] font-bold text-gray-700 uppercase">${p.replace('-', ' ')}</label>
                         </div>
                     `;
                 });
@@ -657,19 +731,13 @@
             
             allPermissionKeys.forEach(p => { permissions[p] = document.getElementById('edit_perm_' + p).checked; });
             
-            db.ref('admins/' + code).update({
-                tgId: tg,
-                permissions: permissions
-            }).then(() => {
-                alert("Permissions Updated!");
-                closeEditSubAdminModal();
+            db.ref('admins/' + code).update({ tgId: tg, permissions: permissions }).then(() => {
+                alert("Permissions Updated!"); closeEditSubAdminModal();
             });
         }
 
         // --- DATA INITIALIZATION ---
-        let allUsers = {};
-        let allTxns = {};
-        let allLifafas = {}; 
+        let allUsers = {}; let allTxns = {}; let allLifafas = {}; let allBannedIPs = {};
         
         function initAdminData() {
             db.ref('/').on('value', snap => {
@@ -677,6 +745,7 @@
                 allUsers = data.users || {};
                 allTxns = data.transactions || {};
                 allLifafas = data.lifafas || {}; 
+                allBannedIPs = data.banned_ips || {}; 
                 const settings = data.settings || {};
                 const logs = data.logs || {};
                 const admins = data.admins || {};
@@ -695,7 +764,7 @@
                 renderUserTable();
                 renderTransactions();
                 renderGlobalLifafas(); 
-                renderSubAdminsTable(admins);
+                if(window.ADMIN_MODE === 'SUPER') renderSubAdminsTable(admins);
                 renderLogs(logs);
             });
         }
@@ -703,16 +772,31 @@
         // --- USER MANAGER RENDERING ---
         function renderUserTable(usersObj = allUsers) {
             const tbody = document.getElementById('user-table-body');
+            if(!tbody) return;
             tbody.innerHTML = '';
             
             const sorted = Object.entries(usersObj).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0));
 
             sorted.forEach(([phone, user]) => {
+                let isWhitelisted = user.whitelisted || user.isWhitelisted || false;
+                let safeIP = user.ipAddress ? user.ipAddress.replace(/\./g, '_') : '';
+                let isIpBanned = user.ipAddress && allBannedIPs[safeIP];
+                
+                let ipActionBtn = '';
+                if (user.ipAddress) {
+                    if (isIpBanned) {
+                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', true)" class="text-[9px] px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-check mr-1"></i> UNBAN IP</button>`;
+                    } else {
+                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', false)" class="text-[9px] px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-ban mr-1"></i> BAN IP</button>`;
+                    }
+                }
+                
                 tbody.innerHTML += `
                     <tr class="border-b border-gray-50 hover:bg-gray-50 transition-all">
                         <td class="px-6 py-4">${user.name}</td>
                         <td class="px-6 py-4 font-mono">${phone}</td>
                         <td class="px-6 py-4 text-blue-600 font-black">₹${(user.balance || 0).toFixed(2)}</td>
+                        <td class="px-6 py-4 text-sky-600 font-black">₹${(user.keeperBalance || 0).toFixed(2)}</td>
                         <td class="px-6 py-4">
                             <span class="px-2 py-1 rounded-full text-[10px] font-black ${user.isBanned ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
                                 ${user.isBanned ? 'BANNED' : 'ACTIVE'}
@@ -722,6 +806,17 @@
                             <button onclick="toggleBan('${phone}', ${user.isBanned})" class="text-[10px] px-3 py-1 rounded border font-black ${user.isBanned ? 'border-green-500 text-green-500 hover:bg-green-50' : 'border-red-500 text-red-500 hover:bg-red-50'}">
                                 ${user.isBanned ? 'UNBAN' : 'BAN'}
                             </button>
+                        </td>
+                        <td class="px-6 py-4 border-l border-gray-100 bg-gray-50">
+                            <button onclick="toggleWhitelist('${phone}', ${isWhitelisted})" class="text-[10px] px-3 py-1 rounded font-black border transition-colors ${isWhitelisted ? 'bg-indigo-100 border-indigo-200 text-indigo-600 hover:bg-indigo-200' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-100'}">
+                                ${isWhitelisted ? '<i class="fas fa-star text-yellow-500 mr-1"></i> SAFE' : 'NORMAL'}
+                            </button>
+                        </td>
+                        <td class="px-6 py-4 border-l border-gray-100 ${isIpBanned ? 'bg-red-100/50' : 'bg-red-50/30'}">
+                            <div class="flex flex-col items-start">
+                                <span class="text-[10px] ${isIpBanned ? 'text-red-600 font-black' : 'text-gray-500'} font-mono">${user.ipAddress || 'Unknown IP'}</span>
+                                ${ipActionBtn}
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -739,17 +834,60 @@
                 db.ref('users/' + phone).update({ isBanned: !currentStatus }); logAction(`User ${phone} was ${!currentStatus ? 'Banned' : 'Unbanned'}`);
             }
         }
+        function toggleWhitelist(phone, currentStatus) {
+            const newStatus = !currentStatus;
+            if(confirm(`Are you sure you want to ${newStatus ? 'Add to Whitelist (Safe Zone)' : 'Remove from Whitelist'}?`)) {
+                db.ref('users/' + phone).update({ isWhitelisted: newStatus, whitelisted: newStatus, isBanned: newStatus ? false : null, status: newStatus ? 'active' : null, banReason: null }).then(() => {
+                    logAction(`User ${phone} was ${newStatus ? 'Whitelisted' : 'Removed from Whitelist'}`);
+                    if(newStatus && allUsers[phone] && allUsers[phone].ipAddress) db.ref('banned_ips/' + allUsers[phone].ipAddress.replace(/\./g, '_')).remove();
+                    alert(`User is now ${newStatus ? 'Whitelisted and Safe' : 'back to Normal limitations'}.`);
+                });
+            }
+        }
+        function toggleIPBan(phone, ipAddress, isCurrentlyBanned) {
+            if(!ipAddress || ipAddress === 'unknown') return alert("No valid IP address.");
+            let safeIP = ipAddress.replace(/\./g, '_');
+            if (isCurrentlyBanned) {
+                if(confirm(`Are you sure you want to UNBAN the device/IP (${ipAddress}) for this user?`)) {
+                    db.ref('banned_ips/' + safeIP).remove().then(() => logAction(`Device/IP ${ipAddress} Unbanned`));
+                }
+            } else {
+                if(confirm(`Are you sure you want to permanently BAN the device/IP (${ipAddress})?`)) {
+                    db.ref('banned_ips/' + safeIP).set({ bannedAt: Date.now(), reason: 'Admin Manual Device/IP Ban via User Manager', phone: phone }).then(() => logAction(`Device/IP ${ipAddress} Banned permanently`));
+                }
+            }
+        }
+        function manualBanIP() {
+            const ipInput = document.getElementById('manual-ip-input').value.trim();
+            if(!ipInput) return alert("Please enter a valid IP address!");
+            let safeIP = ipInput.replace(/\./g, '_');
+            if(confirm(`Are you sure you want to manually BAN the IP: ${ipInput}?`)) {
+                db.ref('banned_ips/' + safeIP).set({ bannedAt: Date.now(), reason: 'Admin Manual Custom IP Ban', phone: 'Manual Entry' }).then(() => {
+                    logAction(`Manually Banned Custom IP: ${ipInput}`); alert("IP Address manually banned successfully!"); document.getElementById('manual-ip-input').value = '';
+                }).catch(e => alert("Error: " + e.message));
+            }
+        }
+        function resetAllBalances() {
+            if(confirm("⚠️ DANGER: Are you sure you want to reset ALL user balances to ₹0?")) {
+                if(prompt("Type 'RESET' to confirm:") === 'RESET') {
+                    db.ref('users').once('value', snap => {
+                        const users = snap.val(); if(users) {
+                            const updates = {}; Object.keys(users).forEach(p => { updates[`users/${p}/balance`] = 0; updates[`users/${p}/keeperBalance`] = 0; });
+                            db.ref('/').update(updates).then(() => { logAction("RESET ALL USER BALANCES TO ZERO"); alert("All balances reset to ₹0."); });
+                        }
+                    });
+                } else { alert("Confirmation failed."); }
+            }
+        }
 
         // --- GLOBAL LIFAFA FUNCTIONS ---
         function toggleAdminLifafaTypeUI() {
             let type = document.getElementById('adm-lif-type').value;
             if(type === 'Scratch') {
                 document.getElementById('adm-lif-standard').classList.add('hidden');
-                document.getElementById('adm-lif-scratch').classList.remove('hidden');
-                document.getElementById('adm-lif-scratch').classList.add('grid');
+                document.getElementById('adm-lif-scratch').classList.remove('hidden'); document.getElementById('adm-lif-scratch').classList.add('grid');
             } else {
-                document.getElementById('adm-lif-scratch').classList.add('hidden');
-                document.getElementById('adm-lif-scratch').classList.remove('grid');
+                document.getElementById('adm-lif-scratch').classList.add('hidden'); document.getElementById('adm-lif-scratch').classList.remove('grid');
                 document.getElementById('adm-lif-standard').classList.remove('hidden');
             }
         }
@@ -761,8 +899,7 @@
             
             let amt = 0, minAmt = 0, maxAmt = 0;
             if(type === 'Scratch') {
-                minAmt = parseInt(document.getElementById('adm-lif-min').value);
-                maxAmt = parseInt(document.getElementById('adm-lif-max').value);
+                minAmt = parseInt(document.getElementById('adm-lif-min').value); maxAmt = parseInt(document.getElementById('adm-lif-max').value);
                 if(isNaN(minAmt) || isNaN(maxAmt) || minAmt < 1 || maxAmt <= minAmt) return alert("Invalid Min/Max range!");
             } else {
                 amt = parseFloat(document.getElementById('adm-lif-amt').value);
@@ -770,46 +907,28 @@
             }
             if(isNaN(users) || users < 1) return alert("Invalid users count!");
             
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let lifafaId = '';
-            for(let i=0; i<10; i++) lifafaId += chars.charAt(Math.floor(Math.random() * chars.length));
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; let lifafaId = ''; for(let i=0; i<10; i++) lifafaId += chars.charAt(Math.floor(Math.random() * chars.length));
 
-            const newLifafa = { 
-                id: lifafaId, creator: 'SYSTEM_ADMIN', type: type, amount: amt, minAmount: minAmt, maxAmount: maxAmt,
-                totalUsers: users, claimedUsers: 0, timestamp: Date.now(), status: 'ACTIVE', channels: [], code: code 
-            };
+            const newLifafa = { id: lifafaId, creator: 'SYSTEM_ADMIN', type: type, amount: amt, minAmount: minAmt, maxAmount: maxAmt, totalUsers: users, claimedUsers: 0, timestamp: Date.now(), status: 'ACTIVE', channels: [], code: code };
 
             db.ref('lifafas/' + lifafaId).set(newLifafa).then(() => {
-                let link = window.location.origin + "/?lifafa=" + lifafaId;
-                alert("Admin Lifafa Created!\nShare this link: " + link);
-                logAction("Admin created a Lifafa: " + lifafaId);
-                
-                document.getElementById('adm-lif-amt').value = ''; document.getElementById('adm-lif-min').value = '';
-                document.getElementById('adm-lif-max').value = ''; document.getElementById('adm-lif-users').value = '';
-                document.getElementById('adm-lif-code').value = '';
+                let link = window.location.origin + "/?lifafa=" + lifafaId; alert("Admin Lifafa Created!\nShare this link: " + link); logAction("Admin created a Lifafa: " + lifafaId);
+                document.getElementById('adm-lif-amt').value = ''; document.getElementById('adm-lif-min').value = ''; document.getElementById('adm-lif-max').value = ''; document.getElementById('adm-lif-users').value = ''; document.getElementById('adm-lif-code').value = '';
             });
         }
 
         function renderGlobalLifafas() {
-            const tbody = document.getElementById('adm-lifafas-body');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
+            const tbody = document.getElementById('adm-lifafas-body'); if(!tbody) return; tbody.innerHTML = '';
             const sorted = Object.values(allLifafas).sort((a,b) => b.timestamp - a.timestamp);
-            
             sorted.forEach(l => {
                 let amtText = l.type === 'Scratch' ? `₹${l.minAmount}-₹${l.maxAmount}` : `₹${l.amount}`;
                 let statusColor = l.status === 'ACTIVE' ? 'bg-green-100 text-green-600' : (l.status === 'COMPLETED' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600');
                 let link = window.location.origin + "/?lifafa=" + l.id;
-                
                 tbody.innerHTML += `
                     <tr class="border-b border-gray-50 hover:bg-gray-50">
                         <td class="px-4 py-3">${l.creator === 'SYSTEM_ADMIN' ? '<span class="text-orange-500 font-black"><i class="fas fa-shield-alt"></i> ADMIN</span>' : l.creator}</td>
                         <td class="px-4 py-3">${l.type}</td>
-                        <td class="px-4 py-3 text-green-600">
-                            ${amtText} <br>
-                            <span class="text-[10px] text-gray-400 font-normal">Max Liability: ₹${(l.type==='Scratch'?l.maxAmount:l.amount)*l.totalUsers}</span>
-                        </td>
+                        <td class="px-4 py-3 text-green-600">${amtText} <br><span class="text-[10px] text-gray-400 font-normal">Max Liability: ₹${(l.type==='Scratch'?l.maxAmount:l.amount)*l.totalUsers}</span></td>
                         <td class="px-4 py-3">${l.claimedUsers || 0} / ${l.totalUsers}</td>
                         <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-[10px] ${statusColor}">${l.status}</span></td>
                         <td class="px-4 py-3 flex gap-2">
@@ -826,8 +945,10 @@
         function setDepositFilter(filter) { depFilter = filter; renderTransactions(); }
         function setPayoutFilter(filter) { payFilter = filter; renderTransactions(); }
         
+        // --- TRANSACTIONS RENDER LOGIC ---
         function renderTransactions() { 
             const depC = document.getElementById('deposit-cards-container'); const payC = document.getElementById('payout-cards-container');
+            if(!depC || !payC) return;
             depC.innerHTML = ''; payC.innerHTML = ''; let pd = 0, pp = 0;
             
             Object.entries(allTxns).sort((a,b) => b[1].timestamp - a[1].timestamp).forEach(([id, t]) => {
@@ -883,7 +1004,12 @@
         }
         function logAction(msg) { db.ref('logs/LOG'+Date.now()).set({message:msg, timestamp:Date.now(), date:new Date().toLocaleString('en-IN')}); }
         function renderLogs(logsObj) {
-            const c = document.getElementById('logs-container'); c.innerHTML=''; Object.values(logsObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,50).forEach(l => { c.innerHTML+=`<div class="border-b py-2"><span class="text-xs text-gray-500">${l.date}</span> ${l.message}</div>`; });
+            const c = document.getElementById('logs-container'); if(!c) return; c.innerHTML=''; Object.values(logsObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,50).forEach(l => { c.innerHTML+=`<div class="border-b border-gray-100 py-3"><span class="text-xs font-bold text-gray-400 block mb-1">${l.date}</span><span class="text-sm font-bold text-gray-700">${l.message}</span></div>`; });
+        }
+        function savePost() {
+            let text = document.getElementById('post-text').value;
+            if(!text) return alert("Write something!");
+            db.ref('posts/POST' + Date.now()).set({ text: text, timestamp: Date.now() }).then(() => { alert("Post saved!"); document.getElementById('post-text').value = ''; });
         }
     </script>
 </body>
