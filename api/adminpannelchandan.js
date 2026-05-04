@@ -12,28 +12,46 @@ const firebaseConfig = {
 };
 
 export default function handler(req, res) {
+    const url = req.url || '';
+    let adminMode = null;
+
+    // URL Query ke hisaab se Mode Decide karna
+    if (url.includes('adminchandan')) {
+        adminMode = 'SUPER';
+    } else if (url.includes('adminbhaiid')) {
+        adminMode = 'RESTRICTED';
+    }
+
+    // Agar unauthorized access hai toh block karo (Purana URL delete)
+    if (!adminMode) {
+        res.setHeader('Content-Type', 'text/html');
+        return res.status(403).send(`
+            <h1 style="color:red; text-align:center; margin-top:50px;">403 ACCESS DENIED</h1>
+            <p style="text-align:center;">You are not authorized to view this page.</p>
+        `);
+    }
+
     let html = '';
     
     try {
-        // Pehle small 'admin.html' try karega
         html = fs.readFileSync(path.join(process.cwd(), 'admin.html'), 'utf8');
     } catch (e1) {
         try {
-            // Agar nahi mili toh capital 'Admin.html' try karega
             html = fs.readFileSync(path.join(process.cwd(), 'Admin.html'), 'utf8');
         } catch (e2) {
-            // Agar dono nahi mili toh Vercel par 404 aane ke bajaye ye error show hoga
             res.setHeader('Content-Type', 'text/html');
             return res.status(200).send(`
                 <h1 style="color:red; text-align:center; margin-top:50px;">ERROR: Admin File Missing!</h1>
-                <p style="text-align:center;">Vercel route is working perfectly, but <b>admin.html</b> file is not found in the root directory.</p>
-                <p style="text-align:center;">Please ensure <b>admin.html</b> is uploaded right next to your <b>index.html</b></p>
+                <p style="text-align:center;">Please ensure <b>admin.html</b> is uploaded.</p>
             `);
         }
     }
     
-    // Config Inject karna
-    const configScript = `const firebaseConfig = ${JSON.stringify(firebaseConfig)};`;
+    // Config ke sath-sath Admin Mode bhi inject kar rahe hain
+    const configScript = `
+        const firebaseConfig = ${JSON.stringify(firebaseConfig)};
+        window.ADMIN_MODE = '${adminMode}';
+    `;
     html = html.replace('/* INJECT_FIREBASE_CONFIG */', configScript);
     
     res.setHeader('Content-Type', 'text/html');
