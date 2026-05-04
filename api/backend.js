@@ -64,38 +64,6 @@ export default async function handler(req, res) {
             }
         }
 
-        if (action === 'ADMIN_WHITELIST') {
-            const uSnap = await get(ref(db, `users/${data.targetPhone}`));
-            if (!uSnap.exists()) throw new Error("User not found!");
-            
-            await update(ref(db, `users/${data.targetPhone}`), {
-                isWhitelisted: data.status,
-                isBanned: data.status ? false : null, 
-                banReason: data.status ? null : null
-            });
-            
-            if(data.status && uSnap.val().ipAddress) {
-                await update(ref(db), { [`banned_ips/${uSnap.val().ipAddress}`]: null });
-            }
-            return res.json({ data: "Success" });
-        }
-
-        if (action === 'ADMIN_BAN_IP') {
-            if (data.ipAddress) {
-                let safeIP = data.ipAddress.replace(/\./g, '_');
-                await update(ref(db), { [`banned_ips/${safeIP}`]: true });
-            } else if (data.targetPhone) {
-                const uSnap = await get(ref(db, `users/${data.targetPhone}`));
-                if (!uSnap.exists()) throw new Error("User not found!");
-                let uIP = uSnap.val().ipAddress;
-                if (!uIP) throw new Error("No IP found for this user");
-                await update(ref(db), { [`banned_ips/${uIP}`]: true });
-            } else {
-                throw new Error("Provide IP or Phone number");
-            }
-            return res.json({ data: "Success" });
-        }
-
         if (action === 'CHECK_USER') {
             const snap = await get(ref(db, `users/${data.phone}`));
             return res.json({ data: snap.exists() ? snap.val() : null });
@@ -112,7 +80,6 @@ export default async function handler(req, res) {
             const snap = await get(ref(db, `users/${data.phone}`));
             if (snap.exists()) throw new Error("Phone number already registered!");
             
-            // PREVENT SAME TELEGRAM ID CREATION
             const usersRef = ref(db, 'users');
             const tgQuery = query(usersRef, orderByChild('tgUserId'), equalTo(data.userObj.tgUserId));
             const tgSnap = await get(tgQuery);
@@ -452,19 +419,6 @@ export default async function handler(req, res) {
             
             if(data.txn) updates[`transactions/${data.txn.id}`] = data.txn;
             await update(ref(db), updates); return res.json({ data: "Success" });
-        }
-
-        if (action === 'RESET_ALL_BALANCES') {
-            const usersSnap = await get(ref(db, "users"));
-            const updates = {};
-            if (usersSnap.exists()) {
-                usersSnap.forEach(child => {
-                    updates[`users/${child.key}/balance`] = 0;
-                    updates[`users/${child.key}/keeperBalance`] = 0;
-                });
-                await update(ref(db), updates);
-            }
-            return res.json({ data: "Success" });
         }
 
         return res.status(400).json({ error: "Unknown Action" });
