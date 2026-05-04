@@ -1,7 +1,11 @@
 {
   "rewrites": [
     {
-      "source": "/adminpanelchandan",
+      "source": "/id",
+      "destination": "/api/adminpannelchandan.js"
+    },
+    {
+      "source": "/adminbhaiid",
       "destination": "/api/adminpannelchandan.js"
     },
     {
