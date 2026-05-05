@@ -50,8 +50,7 @@
                 <label class="block text-xs font-bold text-gray-400 mb-2">TELEGRAM USER ID</label>
                 <input type="text" id="edit-sa-tg" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2 focus:border-blue-500 font-bold">
             </div>
-            <div class="mb-4 max-h-60 overflow-y-auto grid grid-cols-2 gap-2" id="edit-sa-permissions">
-                </div>
+            <div class="mb-4 max-h-60 overflow-y-auto grid grid-cols-2 gap-2" id="edit-sa-permissions"></div>
             <div class="flex gap-3">
                 <button onclick="saveSubAdminEdits()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-3 rounded-xl shadow-md transition-colors">SAVE CHANGES</button>
                 <button onclick="closeEditSubAdminModal()" class="flex-1 bg-gray-800 hover:bg-gray-900 text-white font-black py-3 rounded-xl shadow-md transition-colors">CANCEL</button>
@@ -221,7 +220,7 @@
             </div>
 
             <div id="view-lifafa" class="admin-view">
-                <div class="flex justify-between items-center mb-6">
+               <div class="flex justify-between items-center mb-6">
                     <h2 class="text-2xl font-black text-gray-800">Global Lifafa Manager</h2>
                     <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
                 </div>
@@ -431,9 +430,49 @@
             </div>
             
             <div id="view-user-data" class="admin-view">
-                <h2 class="text-2xl font-black mb-6">User Data</h2>
-                <p>Lookup details feature...</p>
-                <button onclick="showAdminView('dashboard')" class="mt-6 text-gray-400 font-bold">Back</button>
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">User Data Lookup</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
+                
+                <div class="stat-card max-w-xl mb-6">
+                    <label class="block text-xs font-bold text-gray-400 mb-2">ENTER USER MOBILE NUMBER</label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <input type="tel" id="lookup-mobile" class="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:border-teal-500 font-bold text-lg tracking-wide" placeholder="e.g. 9876543210">
+                        <button onclick="fetchUserData()" class="bg-teal-500 text-white font-black px-8 py-3 rounded-xl shadow-lg shadow-teal-100 hover:bg-teal-600 transition-colors"><i class="fas fa-search mr-2"></i> FETCH DATA</button>
+                    </div>
+                </div>
+
+                <div id="lookup-result" class="hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        <div class="stat-card border-l-4 border-l-teal-500 bg-teal-50/20">
+                            <p class="text-xs font-bold text-gray-400 uppercase">User Name</p>
+                            <h3 class="text-xl font-black mt-1 text-gray-800 uppercase" id="lookup-name">-</h3>
+                        </div>
+                        <div class="stat-card border-l-4 border-l-blue-500 bg-blue-50/20">
+                            <p class="text-xs font-bold text-gray-400 uppercase">Wallet Balance</p>
+                            <h3 class="text-xl font-black mt-1 text-blue-600" id="lookup-balance">₹0.00</h3>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <h3 class="font-black text-lg text-gray-800 mb-4 border-b pb-2"><i class="fas fa-history text-gray-400 mr-2"></i> All Transaction History</h3>
+                        <div class="overflow-x-auto max-h-96 overflow-y-auto no-scrollbar">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-50 border-b border-gray-100 text-[10px] font-black text-gray-400 uppercase sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-3">Date & Time</th>
+                                        <th class="px-4 py-3">Type</th>
+                                        <th class="px-4 py-3">Title Details</th>
+                                        <th class="px-4 py-3">Amount</th>
+                                        <th class="px-4 py-3">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lookup-txns-body" class="font-bold text-xs text-gray-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div id="view-database" class="admin-view">
@@ -471,10 +510,8 @@
         let payFilter = 'All';
         let currentSubAdmin = null;
 
-        // Features/Permissions List mapping
         const allPermissionKeys = ['deposits', 'payouts', 'users', 'lifafa', 'credit-debit', 'server-fees', 'user-data', 'gift-codes', 'ban', 'official-posts', 'database', 'settings', 'logs'];
 
-        // UI Preperation based on Admin Mode
         if (window.ADMIN_MODE === 'RESTRICTED') {
             document.getElementById('login-title').innerHTML = `RESTRICTED <span class="text-orange-500">ADMIN</span>`;
             document.getElementById('login-icon-bg').className = 'w-20 h-20 bg-orange-500 text-white rounded-3xl flex items-center justify-center text-4xl mx-auto mb-4 shadow-lg shadow-orange-200';
@@ -482,15 +519,11 @@
             document.getElementById('header-mode-text').innerText = 'STAFF';
             document.getElementById('header-mode-text').className = 'text-orange-500';
         } else if (window.ADMIN_MODE === 'SUPER') {
-            // Show Sub-Admins manager only to SUPER ADMIN
             document.getElementById('btn-subadmins').classList.remove('hidden');
             document.getElementById('btn-subadmins').classList.add('flex');
-            
-            // Allow resetting all balances only to SUPER ADMIN
             document.getElementById('btn-reset-balances').classList.remove('hidden');
         }
 
-        // Initialize Checkboxes for Sub-Admin Creation Form
         const pGrid = document.getElementById('sa-permissions-grid');
         if(pGrid) {
             allPermissionKeys.forEach(p => {
@@ -503,7 +536,6 @@
             });
         }
 
-        // Send Telegram Notification
         async function sendTGMessage(chatId, text) {
             try {
                 if(!chatId) return;
@@ -511,441 +543,140 @@
             } catch (e) {}
         }
 
-        // --- SINGLE AUTH LISTENER ---
         auth.onAuthStateChanged(user => {
             if (user) {
                 if (window.ADMIN_MODE === 'RESTRICTED') {
                     let code = localStorage.getItem('restrictedAdminCode');
-                    if (!code) { 
-                        adminLogout(); 
-                        return; 
-                    }
-                    
-                    // Live Sync for Restricted Permissions
+                    if (!code) { adminLogout(); return; }
                     db.ref('admins/' + code).on('value', snap => {
-                        if (!snap.exists()) {
-                            alert("Admin Code Deleted or Invalid. Access Revoked.");
-                            adminLogout();
-                            return;
-                        }
-                        currentSubAdmin = snap.val();
-                        currentSubAdmin.code = code;
-                        
+                        if (!snap.exists()) { alert("Admin Code Deleted or Invalid. Access Revoked."); adminLogout(); return; }
+                        currentSubAdmin = snap.val(); currentSubAdmin.code = code;
                         applyPermissions(currentSubAdmin.permissions);
-                        
-                        // Check if current view is suddenly revoked
                         let activeViewEl = document.querySelector('.admin-view.active');
-                        if(activeViewEl) {
-                            let viewId = activeViewEl.id.replace('view-', '');
-                            if (viewId !== 'dashboard' && !currentSubAdmin.permissions[viewId]) {
-                                showAdminView('dashboard');
-                            }
-                        }
+                        if(activeViewEl) { let viewId = activeViewEl.id.replace('view-', ''); if (viewId !== 'dashboard' && !currentSubAdmin.permissions[viewId]) { showAdminView('dashboard'); } }
                         proceedToDashboard();
                     });
-                } else {
-                    // Super Admin
-                    proceedToDashboard();
-                }
-            } else {
-                document.getElementById('admin-login-screen').classList.remove('hidden');
-                document.getElementById('admin-main-layout').classList.add('hidden');
-            }
+                } else { proceedToDashboard(); }
+            } else { document.getElementById('admin-login-screen').classList.remove('hidden'); document.getElementById('admin-main-layout').classList.add('hidden'); }
         });
 
-        function proceedToDashboard() {
-            document.getElementById('admin-login-screen').classList.add('hidden');
-            document.getElementById('admin-main-layout').classList.remove('hidden');
-            initAdminData();
-        }
-
-        function applyPermissions(perms) {
-            allPermissionKeys.forEach(p => {
-                let btn = document.getElementById('btn-' + p);
-                if (btn) {
-                    if (perms && perms[p]) {
-                        btn.classList.remove('hidden');
-                        btn.classList.add('flex');
-                    } else {
-                        btn.classList.add('hidden');
-                        btn.classList.remove('flex');
-                    }
-                }
-            });
-        }
-
+        function proceedToDashboard() { document.getElementById('admin-login-screen').classList.add('hidden'); document.getElementById('admin-main-layout').classList.remove('hidden'); initAdminData(); }
+        function applyPermissions(perms) { allPermissionKeys.forEach(p => { let btn = document.getElementById('btn-' + p); if (btn) { if (perms && perms[p]) { btn.classList.remove('hidden'); btn.classList.add('flex'); } else { btn.classList.add('hidden'); btn.classList.remove('flex'); } } }); }
+        
         function handleAdminLogin() {
-            const email = document.getElementById('admin-email').value;
-            const pass = document.getElementById('admin-pass').value;
-            const loginBtn = document.getElementById('login-btn');
-
+            const email = document.getElementById('admin-email').value; const pass = document.getElementById('admin-pass').value; const loginBtn = document.getElementById('login-btn');
             if (window.ADMIN_MODE === 'RESTRICTED') {
                 const code = document.getElementById('admin-code').value.trim();
                 if (!code) return alert("Admin Unique Code is required!");
-                
-                loginBtn.innerText = "VERIFYING CODE..."; 
-                loginBtn.disabled = true;
-                
-                // RESTRICTED: Verify Code BEFORE signing in to prevent race conditions
+                loginBtn.innerText = "VERIFYING CODE..."; loginBtn.disabled = true;
                 db.ref('admins/' + code).once('value', snap => {
                     if (snap.exists()) {
-                        // Code is valid
-                        localStorage.setItem('restrictedAdminCode', code);
-                        let adminData = snap.val();
-                        
-                        loginBtn.innerText = "LOGGING IN...";
-                        auth.signInWithEmailAndPassword(email, pass).then(() => {
-                            sendTGMessage(adminData.tgId, `🚨 Login Detected for Restricted Admin: ${adminData.name}`);
-                        }).catch(e => {
-                            alert("Login Failed: " + e.message);
-                            localStorage.removeItem('restrictedAdminCode'); // Cleanup on fail
-                            loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false;
-                        });
-                    } else {
-                        alert("Invalid Admin Unique Code!");
-                        loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false;
-                    }
+                        localStorage.setItem('restrictedAdminCode', code); let adminData = snap.val(); loginBtn.innerText = "LOGGING IN...";
+                        auth.signInWithEmailAndPassword(email, pass).then(() => { sendTGMessage(adminData.tgId, `🚨 Login Detected for Restricted Admin: ${adminData.name}`); }).catch(e => { alert("Login Failed: " + e.message); localStorage.removeItem('restrictedAdminCode'); loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false; });
+                    } else { alert("Invalid Admin Unique Code!"); loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false; }
                 });
-            } else {
-                // SUPER ADMIN: Direct Login
-                loginBtn.innerText = "LOGGING IN..."; 
-                loginBtn.disabled = true;
-                
-                auth.signInWithEmailAndPassword(email, pass).catch(e => {
-                    alert("Login Failed: " + e.message);
-                    loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false;
-                });
-            }
+            } else { loginBtn.innerText = "LOGGING IN..."; loginBtn.disabled = true; auth.signInWithEmailAndPassword(email, pass).catch(e => { alert("Login Failed: " + e.message); loginBtn.innerText = "LOGIN TO DASHBOARD"; loginBtn.disabled = false; }); }
         }
 
-        function adminLogout() { 
-            if(window.ADMIN_MODE === 'RESTRICTED') {
-                localStorage.removeItem('restrictedAdminCode');
-            }
-            auth.signOut().then(() => location.reload()); 
-        }
-
-        function showAdminView(viewId) {
-            // Permission check for routing
-            if (window.ADMIN_MODE === 'RESTRICTED' && viewId !== 'dashboard') {
-                if (!currentSubAdmin || !currentSubAdmin.permissions || !currentSubAdmin.permissions[viewId]) {
-                    return alert("You do not have permission to view this section.");
-                }
-            }
-            document.querySelectorAll('.admin-view').forEach(v => v.classList.remove('active'));
-            document.getElementById('view-' + viewId).classList.add('active');
-        }
+        function adminLogout() { if(window.ADMIN_MODE === 'RESTRICTED') localStorage.removeItem('restrictedAdminCode'); auth.signOut().then(() => location.reload()); }
+        function showAdminView(viewId) { if (window.ADMIN_MODE === 'RESTRICTED' && viewId !== 'dashboard') { if (!currentSubAdmin || !currentSubAdmin.permissions || !currentSubAdmin.permissions[viewId]) { return alert("You do not have permission to view this section."); } } document.querySelectorAll('.admin-view').forEach(v => v.classList.remove('active')); document.getElementById('view-' + viewId).classList.add('active'); }
 
         function openDetailModal(title, text) { document.getElementById('detailModalTitle').innerText = title; document.getElementById('detailModalText').innerText = text; document.getElementById('detailModal').classList.remove('hidden'); setTimeout(() => { document.getElementById('detailModal').classList.remove('opacity-0'); document.getElementById('detailModalContent').classList.remove('scale-90'); }, 10); }
         function closeDetailModal() { document.getElementById('detailModal').classList.add('opacity-0'); document.getElementById('detailModalContent').classList.add('scale-90'); setTimeout(() => { document.getElementById('detailModal').classList.add('hidden'); }, 300); }
         function copyDetailText() { navigator.clipboard.writeText(document.getElementById('detailModalText').innerText); alert("Copied to clipboard!"); }
 
-        // --- SUB ADMIN MANAGER FUNCTIONS ---
-        function generateAlphanumeric(length) {
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            let res = ''; for(let i=0; i<length; i++) res += chars.charAt(Math.floor(Math.random() * chars.length)); return res;
-        }
-
-        function createSubAdmin() {
-            const name = document.getElementById('sa-name').value;
-            const tg = document.getElementById('sa-tg').value;
-            let permissions = {};
-            
-            allPermissionKeys.forEach(p => { permissions[p] = document.getElementById('perm_' + p).checked; });
-            
-            const code = generateAlphanumeric(10);
-            
-            db.ref('admins/' + code).set({
-                name: name, tgId: tg, code: code, permissions: permissions, createdAt: Date.now()
-            }).then(() => {
-                alert("Sub-Admin Generated Successfully!\nCode: " + code);
-                document.getElementById('sa-name').value = ''; document.getElementById('sa-tg').value = '';
-            });
-        }
-
-        function renderSubAdminsTable(admins) {
-            const tbody = document.getElementById('subadmins-body');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            if(!admins) return;
-            
-            Object.values(admins).forEach(admin => {
-                let pCount = Object.values(admin.permissions || {}).filter(v=>v).length;
-                tbody.innerHTML += `
-                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                        <td class="px-4 py-3">${admin.name}</td>
-                        <td class="px-4 py-3">${admin.tgId}</td>
-                        <td class="px-4 py-3 font-mono text-orange-600 font-black tracking-widest">${admin.code}</td>
-                        <td class="px-4 py-3">${pCount} Features</td>
-                        <td class="px-4 py-3 flex gap-2">
-                            <button onclick="openEditSubAdmin('${admin.code}')" class="bg-blue-100 text-blue-600 px-3 py-1 rounded hover:bg-blue-200"><i class="fas fa-edit"></i></button>
-                            <button onclick="deleteSubAdmin('${admin.code}')" class="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200"><i class="fas fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function deleteSubAdmin(code) {
-            if(confirm("Are you sure you want to permanently delete this Sub-Admin? They will be logged out instantly.")) {
-                db.ref('admins/' + code).remove();
-            }
-        }
-
-        let editAdminCache = null;
-        function openEditSubAdmin(code) {
-            db.ref('admins/' + code).once('value', snap => {
-                if(!snap.exists()) return;
-                editAdminCache = snap.val();
-                
-                document.getElementById('edit-sa-code').value = code;
-                document.getElementById('edit-sa-tg').value = editAdminCache.tgId;
-                
-                const cBox = document.getElementById('edit-sa-permissions');
-                cBox.innerHTML = '';
-                
-                allPermissionKeys.forEach(p => {
-                    let isChecked = editAdminCache.permissions && editAdminCache.permissions[p] ? 'checked' : '';
-                    cBox.innerHTML += `
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="edit_perm_${p}" ${isChecked} class="w-4 h-4 accent-blue-500">
-                            <label for="edit_perm_${p}" class="text-[10px] font-bold text-gray-700 uppercase">${p.replace('-', ' ')}</label>
-                        </div>
-                    `;
-                });
-                
-                document.getElementById('editSubAdminModal').classList.remove('hidden');
-                setTimeout(() => { document.getElementById('editSubAdminModal').classList.remove('opacity-0'); }, 10);
-            });
-        }
-
-        function closeEditSubAdminModal() {
-            document.getElementById('editSubAdminModal').classList.add('opacity-0');
-            setTimeout(() => { document.getElementById('editSubAdminModal').classList.add('hidden'); }, 300);
-        }
-
-        function saveSubAdminEdits() {
-            const code = document.getElementById('edit-sa-code').value;
-            const tg = document.getElementById('edit-sa-tg').value;
-            let permissions = {};
-            
-            allPermissionKeys.forEach(p => { permissions[p] = document.getElementById('edit_perm_' + p).checked; });
-            
-            db.ref('admins/' + code).update({ tgId: tg, permissions: permissions }).then(() => {
-                alert("Permissions Updated!"); closeEditSubAdminModal();
-            });
-        }
-
-        // --- DATA INITIALIZATION ---
-        let allUsers = {}; let allTxns = {}; let allLifafas = {}; let allBannedIPs = {};
+        function generateAlphanumeric(length) { const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; let res = ''; for(let i=0; i<length; i++) res += chars.charAt(Math.floor(Math.random() * chars.length)); return res; }
+        function createSubAdmin() { const name = document.getElementById('sa-name').value; const tg = document.getElementById('sa-tg').value; let permissions = {}; allPermissionKeys.forEach(p => { permissions[p] = document.getElementById('perm_' + p).checked; }); const code = generateAlphanumeric(10); db.ref('admins/' + code).set({ name: name, tgId: tg, code: code, permissions: permissions, createdAt: Date.now() }).then(() => { alert("Sub-Admin Generated Successfully!\nCode: " + code); document.getElementById('sa-name').value = ''; document.getElementById('sa-tg').value = ''; }); }
         
+        function renderSubAdminsTable(admins) {
+            const tbody = document.getElementById('subadmins-body'); if(!tbody) return; tbody.innerHTML = ''; if(!admins) return;
+            Object.values(admins).forEach(admin => { let pCount = Object.values(admin.permissions || {}).filter(v=>v).length; tbody.innerHTML += `<tr class="border-b border-gray-50 hover:bg-gray-50"><td class="px-4 py-3">${admin.name}</td><td class="px-4 py-3">${admin.tgId}</td><td class="px-4 py-3 font-mono text-orange-600 font-black tracking-widest">${admin.code}</td><td class="px-4 py-3">${pCount} Features</td><td class="px-4 py-3 flex gap-2"><button onclick="openEditSubAdmin('${admin.code}')" class="bg-blue-100 text-blue-600 px-3 py-1 rounded hover:bg-blue-200"><i class="fas fa-edit"></i></button><button onclick="deleteSubAdmin('${admin.code}')" class="bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200"><i class="fas fa-trash"></i></button></td></tr>`; });
+        }
+        function deleteSubAdmin(code) { if(confirm("Are you sure you want to permanently delete this Sub-Admin? They will be logged out instantly.")) db.ref('admins/' + code).remove(); }
+        
+        let editAdminCache = null;
+        function openEditSubAdmin(code) { db.ref('admins/' + code).once('value', snap => { if(!snap.exists()) return; editAdminCache = snap.val(); document.getElementById('edit-sa-code').value = code; document.getElementById('edit-sa-tg').value = editAdminCache.tgId; const cBox = document.getElementById('edit-sa-permissions'); cBox.innerHTML = ''; allPermissionKeys.forEach(p => { let isChecked = editAdminCache.permissions && editAdminCache.permissions[p] ? 'checked' : ''; cBox.innerHTML += `<div class="flex items-center gap-2"><input type="checkbox" id="edit_perm_${p}" ${isChecked} class="w-4 h-4 accent-blue-500"><label for="edit_perm_${p}" class="text-[10px] font-bold text-gray-700 uppercase">${p.replace('-', ' ')}</label></div>`; }); document.getElementById('editSubAdminModal').classList.remove('hidden'); setTimeout(() => { document.getElementById('editSubAdminModal').classList.remove('opacity-0'); }, 10); }); }
+        function closeEditSubAdminModal() { document.getElementById('editSubAdminModal').classList.add('opacity-0'); setTimeout(() => { document.getElementById('editSubAdminModal').classList.add('hidden'); }, 300); }
+        function saveSubAdminEdits() { const code = document.getElementById('edit-sa-code').value; const tg = document.getElementById('edit-sa-tg').value; let permissions = {}; allPermissionKeys.forEach(p => { permissions[p] = document.getElementById('edit_perm_' + p).checked; }); db.ref('admins/' + code).update({ tgId: tg, permissions: permissions }).then(() => { alert("Permissions Updated!"); closeEditSubAdminModal(); }); }
+
+        let allUsers = {}; let allTxns = {}; let allLifafas = {}; let allBannedIPs = {};
         function initAdminData() {
             db.ref('/').on('value', snap => {
-                const data = snap.val() || {};
-                allUsers = data.users || {};
-                allTxns = data.transactions || {};
-                allLifafas = data.lifafas || {}; 
-                allBannedIPs = data.banned_ips || {}; 
-                const settings = data.settings || {};
-                const logs = data.logs || {};
-                const admins = data.admins || {};
-                
+                const data = snap.val() || {}; allUsers = data.users || {}; allTxns = data.transactions || {}; allLifafas = data.lifafas || {}; allBannedIPs = data.banned_ips || {}; const settings = data.settings || {}; const logs = data.logs || {}; const admins = data.admins || {};
                 let totalBal = 0; Object.values(allUsers).forEach(u => totalBal += (u.balance || 0));
                 document.getElementById('stat-users').innerText = Object.keys(allUsers).length;
                 document.getElementById('stat-balance').innerText = "₹" + totalBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
                 document.getElementById('stat-txns').innerText = Object.keys(allTxns).length;
-
-                document.getElementById('set-upi').value = settings.upiId || '';
-                document.getElementById('set-channel').value = settings.telegramChannel || '';
-                document.getElementById('set-support').value = settings.supportUser || '';
-                document.getElementById('set-admin-chat').value = settings.adminChatId || '';
-                document.getElementById('set-maintenance').checked = settings.maintenance || false;
-
-                renderUserTable();
-                renderTransactions();
-                renderGlobalLifafas(); 
-                if(window.ADMIN_MODE === 'SUPER') renderSubAdminsTable(admins);
-                renderLogs(logs);
+                document.getElementById('set-upi').value = settings.upiId || ''; document.getElementById('set-channel').value = settings.telegramChannel || ''; document.getElementById('set-support').value = settings.supportUser || ''; document.getElementById('set-admin-chat').value = settings.adminChatId || ''; document.getElementById('set-maintenance').checked = settings.maintenance || false;
+                renderUserTable(); renderTransactions(); renderGlobalLifafas(); if(window.ADMIN_MODE === 'SUPER') renderSubAdminsTable(admins); renderLogs(logs);
             });
         }
 
-        // --- USER MANAGER RENDERING ---
         function renderUserTable(usersObj = allUsers) {
-            const tbody = document.getElementById('user-table-body');
-            if(!tbody) return;
+            const tbody = document.getElementById('user-table-body'); if(!tbody) return; tbody.innerHTML = '';
+            const sorted = Object.entries(usersObj).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0));
+            sorted.forEach(([phone, user]) => {
+                let isWhitelisted = user.whitelisted || user.isWhitelisted || false; let safeIP = user.ipAddress ? user.ipAddress.replace(/\./g, '_') : ''; let isIpBanned = user.ipAddress && allBannedIPs[safeIP];
+                let ipActionBtn = ''; if (user.ipAddress) { if (isIpBanned) { ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', true)" class="text-[9px] px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-check mr-1"></i> UNBAN IP</button>`; } else { ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', false)" class="text-[9px] px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-ban mr-1"></i> BAN IP</button>`; } }
+                tbody.innerHTML += `<tr class="border-b border-gray-50 hover:bg-gray-50 transition-all"><td class="px-6 py-4">${user.name}</td><td class="px-6 py-4 font-mono">${phone}</td><td class="px-6 py-4 text-blue-600 font-black">₹${(user.balance || 0).toFixed(2)}</td><td class="px-6 py-4 text-sky-600 font-black">₹${(user.keeperBalance || 0).toFixed(2)}</td><td class="px-6 py-4"><span class="px-2 py-1 rounded-full text-[10px] font-black ${user.isBanned ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">${user.isBanned ? 'BANNED' : 'ACTIVE'}</span></td><td class="px-6 py-4 flex gap-2"><button onclick="toggleBan('${phone}', ${user.isBanned})" class="text-[10px] px-3 py-1 rounded border font-black ${user.isBanned ? 'border-green-500 text-green-500 hover:bg-green-50' : 'border-red-500 text-red-500 hover:bg-red-50'}">${user.isBanned ? 'UNBAN' : 'BAN'}</button></td><td class="px-6 py-4 border-l border-gray-100 bg-gray-50"><button onclick="toggleWhitelist('${phone}', ${isWhitelisted})" class="text-[10px] px-3 py-1 rounded font-black border transition-colors ${isWhitelisted ? 'bg-indigo-100 border-indigo-200 text-indigo-600 hover:bg-indigo-200' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-100'}">${isWhitelisted ? '<i class="fas fa-star text-yellow-500 mr-1"></i> SAFE' : 'NORMAL'}</button></td><td class="px-6 py-4 border-l border-gray-100 ${isIpBanned ? 'bg-red-100/50' : 'bg-red-50/30'}"><div class="flex flex-col items-start"><span class="text-[10px] ${isIpBanned ? 'text-red-600 font-black' : 'text-gray-500'} font-mono">${user.ipAddress || 'Unknown IP'}</span>${ipActionBtn}</div></td></tr>`;
+            });
+        }
+        function filterUsers() { const query = document.getElementById('user-search').value.toLowerCase(); const filtered = {}; Object.entries(allUsers).forEach(([p, u]) => { if(p.includes(query) || (u.name && u.name.toLowerCase().includes(query))) filtered[p] = u; }); renderUserTable(filtered); }
+        function toggleBan(phone, currentStatus) { if(confirm(`Are you sure you want to ${currentStatus ? 'Unban' : 'Ban'} this user?`)) { db.ref('users/' + phone).update({ isBanned: !currentStatus }); logAction(`User ${phone} was ${!currentStatus ? 'Banned' : 'Unbanned'}`); } }
+        function toggleWhitelist(phone, currentStatus) { const newStatus = !currentStatus; if(confirm(`Are you sure you want to ${newStatus ? 'Add to Whitelist (Safe Zone)' : 'Remove from Whitelist'}?`)) { db.ref('users/' + phone).update({ isWhitelisted: newStatus, whitelisted: newStatus, isBanned: newStatus ? false : null, status: newStatus ? 'active' : null, banReason: null }).then(() => { logAction(`User ${phone} was ${newStatus ? 'Whitelisted' : 'Removed from Whitelist'}`); if(newStatus && allUsers[phone] && allUsers[phone].ipAddress) db.ref('banned_ips/' + allUsers[phone].ipAddress.replace(/\./g, '_')).remove(); alert(`User is now ${newStatus ? 'Whitelisted and Safe' : 'back to Normal limitations'}.`); }); } }
+        function toggleIPBan(phone, ipAddress, isCurrentlyBanned) { if(!ipAddress || ipAddress === 'unknown') return alert("No valid IP address."); let safeIP = ipAddress.replace(/\./g, '_'); if (isCurrentlyBanned) { if(confirm(`Are you sure you want to UNBAN the device/IP (${ipAddress}) for this user?`)) db.ref('banned_ips/' + safeIP).remove().then(() => logAction(`Device/IP ${ipAddress} Unbanned`)); } else { if(confirm(`Are you sure you want to permanently BAN the device/IP (${ipAddress})?`)) db.ref('banned_ips/' + safeIP).set({ bannedAt: Date.now(), reason: 'Admin Manual Device/IP Ban via User Manager', phone: phone }).then(() => logAction(`Device/IP ${ipAddress} Banned permanently`)); } }
+        function manualBanIP() { const ipInput = document.getElementById('manual-ip-input').value.trim(); if(!ipInput) return alert("Please enter a valid IP address!"); let safeIP = ipInput.replace(/\./g, '_'); if(confirm(`Are you sure you want to manually BAN the IP: ${ipInput}?`)) db.ref('banned_ips/' + safeIP).set({ bannedAt: Date.now(), reason: 'Admin Manual Custom IP Ban', phone: 'Manual Entry' }).then(() => { logAction(`Manually Banned Custom IP: ${ipInput}`); alert("IP Address manually banned successfully!"); document.getElementById('manual-ip-input').value = ''; }).catch(e => alert("Error: " + e.message)); }
+        function resetAllBalances() { if(confirm("⚠️ DANGER: Are you sure you want to reset ALL user balances to ₹0?")) { if(prompt("Type 'RESET' to confirm:") === 'RESET') { db.ref('users').once('value', snap => { const users = snap.val(); if(users) { const updates = {}; Object.keys(users).forEach(p => { updates[`users/${p}/balance`] = 0; updates[`users/${p}/keeperBalance`] = 0; }); db.ref('/').update(updates).then(() => { logAction("RESET ALL USER BALANCES TO ZERO"); alert("All balances reset to ₹0."); }); } }); } else alert("Confirmation failed."); } }
+
+        function toggleAdminLifafaTypeUI() { let type = document.getElementById('adm-lif-type').value; if(type === 'Scratch') { document.getElementById('adm-lif-standard').classList.add('hidden'); document.getElementById('adm-lif-scratch').classList.remove('hidden'); document.getElementById('adm-lif-scratch').classList.add('grid'); } else { document.getElementById('adm-lif-scratch').classList.add('hidden'); document.getElementById('adm-lif-scratch').classList.remove('grid'); document.getElementById('adm-lif-standard').classList.remove('hidden'); } }
+        function adminCreateLifafa() { let type = document.getElementById('adm-lif-type').value; let users = parseInt(document.getElementById('adm-lif-users').value); let code = document.getElementById('adm-lif-code').value.trim(); let amt = 0, minAmt = 0, maxAmt = 0; if(type === 'Scratch') { minAmt = parseInt(document.getElementById('adm-lif-min').value); maxAmt = parseInt(document.getElementById('adm-lif-max').value); if(isNaN(minAmt) || isNaN(maxAmt) || minAmt < 1 || maxAmt <= minAmt) return alert("Invalid Min/Max range!"); } else { amt = parseFloat(document.getElementById('adm-lif-amt').value); if(isNaN(amt) || amt <= 0) return alert("Invalid amount!"); } if(isNaN(users) || users < 1) return alert("Invalid users count!"); const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; let lifafaId = ''; for(let i=0; i<10; i++) lifafaId += chars.charAt(Math.floor(Math.random() * chars.length)); const newLifafa = { id: lifafaId, creator: 'SYSTEM_ADMIN', type: type, amount: amt, minAmount: minAmt, maxAmount: maxAmt, totalUsers: users, claimedUsers: 0, timestamp: Date.now(), status: 'ACTIVE', channels: [], code: code }; db.ref('lifafas/' + lifafaId).set(newLifafa).then(() => { let link = window.location.origin + "/?lifafa=" + lifafaId; alert("Admin Lifafa Created!\nShare this link: " + link); logAction("Admin created a Lifafa: " + lifafaId); document.getElementById('adm-lif-amt').value = ''; document.getElementById('adm-lif-min').value = ''; document.getElementById('adm-lif-max').value = ''; document.getElementById('adm-lif-users').value = ''; document.getElementById('adm-lif-code').value = ''; }); }
+        function renderGlobalLifafas() { const tbody = document.getElementById('adm-lifafas-body'); if(!tbody) return; tbody.innerHTML = ''; const sorted = Object.values(allLifafas).sort((a,b) => b.timestamp - a.timestamp); sorted.forEach(l => { let amtText = l.type === 'Scratch' ? `₹${l.minAmount}-₹${l.maxAmount}` : `₹${l.amount}`; let statusColor = l.status === 'ACTIVE' ? 'bg-green-100 text-green-600' : (l.status === 'COMPLETED' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'); let link = window.location.origin + "/?lifafa=" + l.id; tbody.innerHTML += `<tr class="border-b border-gray-50 hover:bg-gray-50"><td class="px-4 py-3">${l.creator === 'SYSTEM_ADMIN' ? '<span class="text-orange-500 font-black"><i class="fas fa-shield-alt"></i> ADMIN</span>' : l.creator}</td><td class="px-4 py-3">${l.type}</td><td class="px-4 py-3 text-green-600">${amtText} <br><span class="text-[10px] text-gray-400 font-normal">Max Liability: ₹${(l.type==='Scratch'?l.maxAmount:l.amount)*l.totalUsers}</span></td><td class="px-4 py-3">${l.claimedUsers || 0} / ${l.totalUsers}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-[10px] ${statusColor}">${l.status}</span></td><td class="px-4 py-3 flex gap-2"><button onclick="navigator.clipboard.writeText('${link}'); alert('Link Copied!')" class="bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200" title="Copy Link"><i class="fas fa-copy"></i></button>${l.status === 'ACTIVE' ? `<button onclick="expireLifafa('${l.id}')" class="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200" title="Force Expire"><i class="fas fa-times"></i></button>` : ''}</td></tr>`; }); }
+        function expireLifafa(id) { if(confirm("Are you sure you want to forcefully EXPIRE this Lifafa?")) db.ref('lifafas/' + id).update({status: 'EXPIRED'}); }
+
+        // --- FETCH USER DATA FEATURE ---
+        function fetchUserData() {
+            const phone = document.getElementById('lookup-mobile').value.trim();
+            if (!phone || phone.length < 10) return alert("Please enter a valid mobile number!");
+            
+            const user = allUsers[phone];
+            if (!user) return alert("Bhai, yeh number database mai nahi mila!");
+
+            document.getElementById('lookup-result').classList.remove('hidden');
+            document.getElementById('lookup-name').innerText = user.name || 'Unknown';
+            document.getElementById('lookup-balance').innerText = `₹${(user.balance || 0).toFixed(2)}`;
+
+            const tbody = document.getElementById('lookup-txns-body');
             tbody.innerHTML = '';
             
-            const sorted = Object.entries(usersObj).sort((a, b) => (b[1].balance || 0) - (a[1].balance || 0));
+            const userTxns = Object.entries(allTxns)
+                .filter(([id, t]) => t.senderId === phone || t.receiverId === phone || t.phone === phone || t.number === phone)
+                .sort((a, b) => b[1].timestamp - a[1].timestamp);
 
-            sorted.forEach(([phone, user]) => {
-                let isWhitelisted = user.whitelisted || user.isWhitelisted || false;
-                let safeIP = user.ipAddress ? user.ipAddress.replace(/\./g, '_') : '';
-                let isIpBanned = user.ipAddress && allBannedIPs[safeIP];
-                
-                let ipActionBtn = '';
-                if (user.ipAddress) {
-                    if (isIpBanned) {
-                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', true)" class="text-[9px] px-2 py-1 rounded bg-green-500 text-white hover:bg-green-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-check mr-1"></i> UNBAN IP</button>`;
-                    } else {
-                        ipActionBtn = `<button onclick="toggleIPBan('${phone}', '${user.ipAddress}', false)" class="text-[9px] px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600 font-black shadow-sm transition-colors mt-1"><i class="fas fa-ban mr-1"></i> BAN IP</button>`;
-                    }
-                }
+            if (userTxns.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center py-6 text-gray-400 font-bold">No transactions found for this user</td></tr>';
+                return;
+            }
+
+            userTxns.forEach(([id, t]) => {
+                let typeBadge = t.type === 'in' ? '<span class="text-green-600 bg-green-50 px-2 py-1 rounded-full font-black text-[10px] border border-green-100">+ CREDIT</span>' : '<span class="text-red-600 bg-red-50 px-2 py-1 rounded-full font-black text-[10px] border border-red-100">- DEBIT</span>';
+                let statusColor = t.status === 'Success' || t.status === 'Approved' ? 'text-green-600' : (t.status === 'Pending' ? 'text-orange-500' : 'text-red-600');
                 
                 tbody.innerHTML += `
-                    <tr class="border-b border-gray-50 hover:bg-gray-50 transition-all">
-                        <td class="px-6 py-4">${user.name}</td>
-                        <td class="px-6 py-4 font-mono">${phone}</td>
-                        <td class="px-6 py-4 text-blue-600 font-black">₹${(user.balance || 0).toFixed(2)}</td>
-                        <td class="px-6 py-4 text-sky-600 font-black">₹${(user.keeperBalance || 0).toFixed(2)}</td>
-                        <td class="px-6 py-4">
-                            <span class="px-2 py-1 rounded-full text-[10px] font-black ${user.isBanned ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}">
-                                ${user.isBanned ? 'BANNED' : 'ACTIVE'}
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 flex gap-2">
-                            <button onclick="toggleBan('${phone}', ${user.isBanned})" class="text-[10px] px-3 py-1 rounded border font-black ${user.isBanned ? 'border-green-500 text-green-500 hover:bg-green-50' : 'border-red-500 text-red-500 hover:bg-red-50'}">
-                                ${user.isBanned ? 'UNBAN' : 'BAN'}
-                            </button>
-                        </td>
-                        <td class="px-6 py-4 border-l border-gray-100 bg-gray-50">
-                            <button onclick="toggleWhitelist('${phone}', ${isWhitelisted})" class="text-[10px] px-3 py-1 rounded font-black border transition-colors ${isWhitelisted ? 'bg-indigo-100 border-indigo-200 text-indigo-600 hover:bg-indigo-200' : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-100'}">
-                                ${isWhitelisted ? '<i class="fas fa-star text-yellow-500 mr-1"></i> SAFE' : 'NORMAL'}
-                            </button>
-                        </td>
-                        <td class="px-6 py-4 border-l border-gray-100 ${isIpBanned ? 'bg-red-100/50' : 'bg-red-50/30'}">
-                            <div class="flex flex-col items-start">
-                                <span class="text-[10px] ${isIpBanned ? 'text-red-600 font-black' : 'text-gray-500'} font-mono">${user.ipAddress || 'Unknown IP'}</span>
-                                ${ipActionBtn}
-                            </div>
-                        </td>
+                    <tr class="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                        <td class="px-4 py-3 text-gray-500">${t.date || new Date(t.timestamp).toLocaleString('en-IN')}</td>
+                        <td class="px-4 py-3">${typeBadge}</td>
+                        <td class="px-4 py-3 text-gray-800 font-black">${t.title || 'Transaction'}</td>
+                        <td class="px-4 py-3 font-black text-lg">₹${t.amount}</td>
+                        <td class="px-4 py-3 font-black ${statusColor} text-[11px] uppercase tracking-wide">${t.status}</td>
                     </tr>
                 `;
             });
         }
 
-        function filterUsers() {
-            const query = document.getElementById('user-search').value.toLowerCase();
-            const filtered = {}; Object.entries(allUsers).forEach(([p, u]) => { if(p.includes(query) || (u.name && u.name.toLowerCase().includes(query))) filtered[p] = u; });
-            renderUserTable(filtered);
-        }
-
-        function toggleBan(phone, currentStatus) {
-            if(confirm(`Are you sure you want to ${currentStatus ? 'Unban' : 'Ban'} this user?`)) {
-                db.ref('users/' + phone).update({ isBanned: !currentStatus }); logAction(`User ${phone} was ${!currentStatus ? 'Banned' : 'Unbanned'}`);
-            }
-        }
-        function toggleWhitelist(phone, currentStatus) {
-            const newStatus = !currentStatus;
-            if(confirm(`Are you sure you want to ${newStatus ? 'Add to Whitelist (Safe Zone)' : 'Remove from Whitelist'}?`)) {
-                db.ref('users/' + phone).update({ isWhitelisted: newStatus, whitelisted: newStatus, isBanned: newStatus ? false : null, status: newStatus ? 'active' : null, banReason: null }).then(() => {
-                    logAction(`User ${phone} was ${newStatus ? 'Whitelisted' : 'Removed from Whitelist'}`);
-                    if(newStatus && allUsers[phone] && allUsers[phone].ipAddress) db.ref('banned_ips/' + allUsers[phone].ipAddress.replace(/\./g, '_')).remove();
-                    alert(`User is now ${newStatus ? 'Whitelisted and Safe' : 'back to Normal limitations'}.`);
-                });
-            }
-        }
-        function toggleIPBan(phone, ipAddress, isCurrentlyBanned) {
-            if(!ipAddress || ipAddress === 'unknown') return alert("No valid IP address.");
-            let safeIP = ipAddress.replace(/\./g, '_');
-            if (isCurrentlyBanned) {
-                if(confirm(`Are you sure you want to UNBAN the device/IP (${ipAddress}) for this user?`)) {
-                    db.ref('banned_ips/' + safeIP).remove().then(() => logAction(`Device/IP ${ipAddress} Unbanned`));
-                }
-            } else {
-                if(confirm(`Are you sure you want to permanently BAN the device/IP (${ipAddress})?`)) {
-                    db.ref('banned_ips/' + safeIP).set({ bannedAt: Date.now(), reason: 'Admin Manual Device/IP Ban via User Manager', phone: phone }).then(() => logAction(`Device/IP ${ipAddress} Banned permanently`));
-                }
-            }
-        }
-        function manualBanIP() {
-            const ipInput = document.getElementById('manual-ip-input').value.trim();
-            if(!ipInput) return alert("Please enter a valid IP address!");
-            let safeIP = ipInput.replace(/\./g, '_');
-            if(confirm(`Are you sure you want to manually BAN the IP: ${ipInput}?`)) {
-                db.ref('banned_ips/' + safeIP).set({ bannedAt: Date.now(), reason: 'Admin Manual Custom IP Ban', phone: 'Manual Entry' }).then(() => {
-                    logAction(`Manually Banned Custom IP: ${ipInput}`); alert("IP Address manually banned successfully!"); document.getElementById('manual-ip-input').value = '';
-                }).catch(e => alert("Error: " + e.message));
-            }
-        }
-        function resetAllBalances() {
-            if(confirm("⚠️ DANGER: Are you sure you want to reset ALL user balances to ₹0?")) {
-                if(prompt("Type 'RESET' to confirm:") === 'RESET') {
-                    db.ref('users').once('value', snap => {
-                        const users = snap.val(); if(users) {
-                            const updates = {}; Object.keys(users).forEach(p => { updates[`users/${p}/balance`] = 0; updates[`users/${p}/keeperBalance`] = 0; });
-                            db.ref('/').update(updates).then(() => { logAction("RESET ALL USER BALANCES TO ZERO"); alert("All balances reset to ₹0."); });
-                        }
-                    });
-                } else { alert("Confirmation failed."); }
-            }
-        }
-
-        // --- GLOBAL LIFAFA FUNCTIONS ---
-        function toggleAdminLifafaTypeUI() {
-            let type = document.getElementById('adm-lif-type').value;
-            if(type === 'Scratch') {
-                document.getElementById('adm-lif-standard').classList.add('hidden');
-                document.getElementById('adm-lif-scratch').classList.remove('hidden'); document.getElementById('adm-lif-scratch').classList.add('grid');
-            } else {
-                document.getElementById('adm-lif-scratch').classList.add('hidden'); document.getElementById('adm-lif-scratch').classList.remove('grid');
-                document.getElementById('adm-lif-standard').classList.remove('hidden');
-            }
-        }
-
-        function adminCreateLifafa() {
-            let type = document.getElementById('adm-lif-type').value;
-            let users = parseInt(document.getElementById('adm-lif-users').value);
-            let code = document.getElementById('adm-lif-code').value.trim();
-            
-            let amt = 0, minAmt = 0, maxAmt = 0;
-            if(type === 'Scratch') {
-                minAmt = parseInt(document.getElementById('adm-lif-min').value); maxAmt = parseInt(document.getElementById('adm-lif-max').value);
-                if(isNaN(minAmt) || isNaN(maxAmt) || minAmt < 1 || maxAmt <= minAmt) return alert("Invalid Min/Max range!");
-            } else {
-                amt = parseFloat(document.getElementById('adm-lif-amt').value);
-                if(isNaN(amt) || amt <= 0) return alert("Invalid amount!");
-            }
-            if(isNaN(users) || users < 1) return alert("Invalid users count!");
-            
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'; let lifafaId = ''; for(let i=0; i<10; i++) lifafaId += chars.charAt(Math.floor(Math.random() * chars.length));
-
-            const newLifafa = { id: lifafaId, creator: 'SYSTEM_ADMIN', type: type, amount: amt, minAmount: minAmt, maxAmount: maxAmt, totalUsers: users, claimedUsers: 0, timestamp: Date.now(), status: 'ACTIVE', channels: [], code: code };
-
-            db.ref('lifafas/' + lifafaId).set(newLifafa).then(() => {
-                let link = window.location.origin + "/?lifafa=" + lifafaId; alert("Admin Lifafa Created!\nShare this link: " + link); logAction("Admin created a Lifafa: " + lifafaId);
-                document.getElementById('adm-lif-amt').value = ''; document.getElementById('adm-lif-min').value = ''; document.getElementById('adm-lif-max').value = ''; document.getElementById('adm-lif-users').value = ''; document.getElementById('adm-lif-code').value = '';
-            });
-        }
-
-        function renderGlobalLifafas() {
-            const tbody = document.getElementById('adm-lifafas-body'); if(!tbody) return; tbody.innerHTML = '';
-            const sorted = Object.values(allLifafas).sort((a,b) => b.timestamp - a.timestamp);
-            sorted.forEach(l => {
-                let amtText = l.type === 'Scratch' ? `₹${l.minAmount}-₹${l.maxAmount}` : `₹${l.amount}`;
-                let statusColor = l.status === 'ACTIVE' ? 'bg-green-100 text-green-600' : (l.status === 'COMPLETED' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600');
-                let link = window.location.origin + "/?lifafa=" + l.id;
-                tbody.innerHTML += `
-                    <tr class="border-b border-gray-50 hover:bg-gray-50">
-                        <td class="px-4 py-3">${l.creator === 'SYSTEM_ADMIN' ? '<span class="text-orange-500 font-black"><i class="fas fa-shield-alt"></i> ADMIN</span>' : l.creator}</td>
-                        <td class="px-4 py-3">${l.type}</td>
-                        <td class="px-4 py-3 text-green-600">${amtText} <br><span class="text-[10px] text-gray-400 font-normal">Max Liability: ₹${(l.type==='Scratch'?l.maxAmount:l.amount)*l.totalUsers}</span></td>
-                        <td class="px-4 py-3">${l.claimedUsers || 0} / ${l.totalUsers}</td>
-                        <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-[10px] ${statusColor}">${l.status}</span></td>
-                        <td class="px-4 py-3 flex gap-2">
-                            <button onclick="navigator.clipboard.writeText('${link}'); alert('Link Copied!')" class="bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200" title="Copy Link"><i class="fas fa-copy"></i></button>
-                            ${l.status === 'ACTIVE' ? `<button onclick="expireLifafa('${l.id}')" class="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200" title="Force Expire"><i class="fas fa-times"></i></button>` : ''}
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-
-        function expireLifafa(id) { if(confirm("Are you sure you want to forcefully EXPIRE this Lifafa?")) { db.ref('lifafas/' + id).update({status: 'EXPIRED'}); } }
-
+        // --- UPDATED RENDER TRANSACTIONS (SHOWS NAME & NUMBER INSTEAD OF "SELF DEPOSIT") ---
         function setDepositFilter(filter) { depFilter = filter; renderTransactions(); }
         function setPayoutFilter(filter) { payFilter = filter; renderTransactions(); }
         
-        // --- TRANSACTIONS RENDER LOGIC ---
         function renderTransactions() { 
             const depC = document.getElementById('deposit-cards-container'); const payC = document.getElementById('payout-cards-container');
             if(!depC || !payC) return;
@@ -953,22 +684,45 @@
             
             Object.entries(allTxns).sort((a,b) => b[1].timestamp - a[1].timestamp).forEach(([id, t]) => {
                 if(t.status==='Pending' && t.type==='in') pd++; if(t.status==='Pending' && t.type==='out') pp++;
-                const isDep = t.type==='in' && t.title.includes('Deposit'); const isPay = t.type==='out' && t.title.includes('Withdrawal');
+                const isDep = t.type==='in' && (t.title || '').includes('Deposit'); const isPay = t.type==='out' && (t.title || '').includes('Withdrawal');
                 const badge = t.status==='Pending' ? '<span class="text-orange-500">PENDING</span>' : t.status==='Success'||t.status==='Approved' ? '<span class="text-green-500">SUCCESS</span>' : '<span class="text-red-500">REJECTED</span>';
                 
                 let extraInfo = '';
                 if(isPay && (t.upiId || t.upi || t.number)) {
                     let details = t.upiId || t.upi || t.number;
-                    extraInfo = `<div class="mt-1 mb-2"><span class="bg-green-50 text-green-600 border border-green-100 px-2 py-1 rounded text-[11px] font-bold font-mono">UPI/No: <span class="select-all">${details}</span></span></div>`;
+                    extraInfo = `<div class="mt-2 mb-2"><span class="bg-green-50 text-green-600 border border-green-100 px-3 py-1.5 rounded text-[11px] font-bold font-mono">UPI/No: <span class="select-all">${details}</span></span></div>`;
                 }
                 if(isDep) {
                     let utrVal = t.number || t.utr || t.refNo || t.txnRef || t.reference || t.id || 'Not Found';
-                    extraInfo += `<div class="mt-1 mb-2"><button onclick="openDetailModal('UTR Details', '${utrVal}')" class="text-blue-600 border border-blue-200 bg-blue-50 rounded px-3 py-1 text-[11px] font-black hover:bg-blue-100 transition-colors shadow-sm"><i class="fas fa-eye mr-1"></i> SHOW UTR</button></div>`;
+                    extraInfo += `<div class="mt-2 mb-2"><button onclick="openDetailModal('UTR Details', '${utrVal}')" class="text-blue-600 border border-blue-200 bg-blue-50 rounded px-3 py-1.5 text-[11px] font-black hover:bg-blue-100 transition-colors shadow-sm"><i class="fas fa-eye mr-1"></i> SHOW UTR</button></div>`;
                 }
 
-                const act = t.status==='Pending' ? `<button onclick="${isDep?'processDeposit':'processPayout'}('${id}',true)" class="text-green-600 mr-2 border border-green-200 bg-green-50 rounded px-3 py-1 text-xs font-bold hover:bg-green-100 transition-colors">Approve</button><button onclick="${isDep?'processDeposit':'processPayout'}('${id}',false)" class="text-red-500 border border-red-200 bg-red-50 rounded px-3 py-1 text-xs font-bold hover:bg-red-100 transition-colors">Reject</button>` : '';
+                // Extracted exact Phone & Name mapping logic
+                let userPhone = t.phone || t.senderId || t.receiverId || (isDep ? t.senderId : t.receiverId) || '';
+                if(userPhone === 'SYSTEM') userPhone = t.receiverId; 
+                let userName = t.name || (allUsers[userPhone] ? allUsers[userPhone].name : 'Unknown');
                 
-                const html = `<div class="border p-4 mb-2 rounded-xl bg-white shadow-sm border-gray-100"><p class="font-bold text-gray-800">${t.name || 'User'} (₹${t.amount}) ${badge}</p><p class="text-xs font-bold text-gray-400 mb-1">${t.date}</p>${extraInfo}${act}</div>`;
+                let displayUser = userPhone ? `<span class="uppercase tracking-wide">${userName}</span> <span class="text-gray-400 font-normal">(${userPhone})</span>` : userName;
+                let displayTitle = t.title || (isDep ? 'Deposit' : 'Withdrawal');
+
+                const act = t.status==='Pending' ? `<div class="flex gap-2 mt-3"><button onclick="${isDep?'processDeposit':'processPayout'}('${id}',true)" class="flex-1 text-green-600 border border-green-200 bg-green-50 rounded-xl px-3 py-2 text-xs font-black hover:bg-green-100 transition-colors shadow-sm">APPROVE</button><button onclick="${isDep?'processDeposit':'processPayout'}('${id}',false)" class="flex-1 text-red-500 border border-red-200 bg-red-50 rounded-xl px-3 py-2 text-xs font-black hover:bg-red-100 transition-colors shadow-sm">REJECT</button></div>` : '';
+                
+                const html = `
+                <div class="border p-4 mb-3 rounded-2xl bg-white shadow-sm border-gray-100 hover:border-blue-100 hover:shadow-md transition-all">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-black text-gray-800 text-[13px]"><i class="fas fa-user-circle text-gray-300 mr-1 text-lg align-middle"></i> ${displayUser}</p>
+                            <p class="text-[10px] font-black text-blue-500 mt-1 uppercase tracking-widest bg-blue-50 inline-block px-2 py-0.5 rounded border border-blue-100">${displayTitle}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-black text-xl text-gray-900 tracking-tight">₹${t.amount}</p>
+                            <p class="text-[10px] font-bold mt-0.5">${badge}</p>
+                        </div>
+                    </div>
+                    <p class="text-[10px] font-bold text-gray-400 mt-3 mb-1"><i class="fas fa-clock mr-1"></i> ${t.date || new Date(t.timestamp).toLocaleString('en-IN')}</p>
+                    ${extraInfo}
+                    ${act}
+                </div>`;
                 
                 if(isDep && (depFilter==='All'||t.status===depFilter||(depFilter==='Success'&&t.status==='Approved'))) depC.innerHTML += html;
                 if(isPay && (payFilter==='All'||t.status===payFilter)) payC.innerHTML += html;
@@ -978,39 +732,15 @@
             document.getElementById('badge-payouts').innerText = pp; pp > 0 ? document.getElementById('badge-payouts').classList.remove('hidden') : document.getElementById('badge-payouts').classList.add('hidden');
         }
 
-        function processDeposit(txnId, isApprove) {
-            const t = allTxns[txnId]; if(isApprove) { db.ref('users/'+t.receiverId).once('value', s => { const u=s.val(); if(u) { db.ref('users/'+t.receiverId).update({balance:(u.balance||0)+t.amount}); db.ref('transactions/'+txnId).update({status:'Success'}); }}); } else db.ref('transactions/'+txnId).update({status:'Rejected'});
-        }
-        function processPayout(txnId, isApprove) {
-            const t = allTxns[txnId]; if(isApprove) db.ref('transactions/'+txnId).update({status:'Success'}); else { db.ref('users/'+t.senderId).once('value', s => { const u=s.val(); if(u) { db.ref('users/'+t.senderId).update({balance:(u.balance||0)+t.amount}); db.ref('transactions/'+txnId).update({status:'Rejected'}); }}); }
-        }
-        function handleCreditDebit(type) {
-            const p = document.getElementById('cd-mobile').value, a = parseFloat(document.getElementById('cd-amount').value);
-            if(!allUsers[p] || isNaN(a)) return alert("Invalid data!");
-            const nB = type==='credit' ? (allUsers[p].balance||0)+a : (allUsers[p].balance||0)-a;
-            db.ref('users/'+p).update({balance:nB}).then(()=>{ db.ref('transactions/ADMIN'+Date.now()).set({id:'ADMIN'+Date.now(), senderId:type==='credit'?'SYSTEM':p, receiverId:type==='credit'?p:'SYSTEM', amount:a, type:type==='credit'?'in':'out', title:`Admin ${type}`, status:'Success', date:new Date().toLocaleString(), timestamp:Date.now()}); logAction(`Admin ${type} ₹${a} to ${p}`); document.getElementById('cd-amount').value=''; alert("Updated!"); });
-        }
-        function updateSettings() {
-            db.ref('settings').update({ upiId: document.getElementById('set-upi').value, telegramChannel: document.getElementById('set-channel').value, supportUser: document.getElementById('set-support').value, adminChatId: document.getElementById('set-admin-chat').value, maintenance: document.getElementById('set-maintenance').checked }).then(()=>alert("Settings Saved!"));
-        }
-        function createAdminGiftCode() {
-            const c=document.getElementById('gc-code').value.toUpperCase(), a=parseFloat(document.getElementById('gc-amount').value), u=parseInt(document.getElementById('gc-users').value);
-            if(c.length!==5) return alert("5 chars required!"); db.ref('giftcodes/'+c).set({amountPerUser:a, remainingUsers:u, totalUsers:u, createdBy:'ADMIN'}).then(()=>{ alert("Code Created!"); document.getElementById('gc-code').value='';});
-        }
-        function processServerFees() {
-            const min=parseFloat(document.getElementById('fee-min-bal').value), fee=parseFloat(document.getElementById('fee-amount').value); if(isNaN(min)||isNaN(fee)||fee<=0) return;
-            let count=0, tot=0, updates={}; Object.entries(allUsers).forEach(([p, u])=>{ if((u.balance||0)>=min){ updates[`users/${p}/balance`]=(u.balance||0)-fee; count++; tot+=fee; updates[`transactions/FEE${Date.now()}${count}`]={id:`FEE${Date.now()}${count}`, amount:fee, type:'out', title:'Server Fee', status:'Success', timestamp:Date.now()}; }});
-            if(count>0) db.ref('/').update(updates).then(()=>{ document.getElementById('fee-summary').innerHTML=`Users: ${count}<br>Total Deducted: ₹${tot}`; document.getElementById('fee-summary').classList.remove('hidden'); });
-        }
+        function processDeposit(txnId, isApprove) { const t = allTxns[txnId]; if(isApprove) { db.ref('users/'+t.receiverId).once('value', s => { const u=s.val(); if(u) { db.ref('users/'+t.receiverId).update({balance:(u.balance||0)+t.amount}); db.ref('transactions/'+txnId).update({status:'Success'}); }}); } else db.ref('transactions/'+txnId).update({status:'Rejected'}); }
+        function processPayout(txnId, isApprove) { const t = allTxns[txnId]; if(isApprove) db.ref('transactions/'+txnId).update({status:'Success'}); else { db.ref('users/'+t.senderId).once('value', s => { const u=s.val(); if(u) { db.ref('users/'+t.senderId).update({balance:(u.balance||0)+t.amount}); db.ref('transactions/'+txnId).update({status:'Rejected'}); }}); } }
+        function handleCreditDebit(type) { const p = document.getElementById('cd-mobile').value, a = parseFloat(document.getElementById('cd-amount').value); if(!allUsers[p] || isNaN(a)) return alert("Invalid data!"); const nB = type==='credit' ? (allUsers[p].balance||0)+a : (allUsers[p].balance||0)-a; db.ref('users/'+p).update({balance:nB}).then(()=>{ db.ref('transactions/ADMIN'+Date.now()).set({id:'ADMIN'+Date.now(), senderId:type==='credit'?'SYSTEM':p, receiverId:type==='credit'?p:'SYSTEM', amount:a, type:type==='credit'?'in':'out', title:`Admin ${type}`, status:'Success', date:new Date().toLocaleString('en-IN'), timestamp:Date.now()}); logAction(`Admin ${type} ₹${a} to ${p}`); document.getElementById('cd-amount').value=''; alert("Updated!"); }); }
+        function updateSettings() { db.ref('settings').update({ upiId: document.getElementById('set-upi').value, telegramChannel: document.getElementById('set-channel').value, supportUser: document.getElementById('set-support').value, adminChatId: document.getElementById('set-admin-chat').value, maintenance: document.getElementById('set-maintenance').checked }).then(()=>alert("Settings Saved!")); }
+        function createAdminGiftCode() { const c=document.getElementById('gc-code').value.toUpperCase(), a=parseFloat(document.getElementById('gc-amount').value), u=parseInt(document.getElementById('gc-users').value); if(c.length!==5) return alert("5 chars required!"); db.ref('giftcodes/'+c).set({amountPerUser:a, remainingUsers:u, totalUsers:u, createdBy:'ADMIN'}).then(()=>{ alert("Code Created!"); document.getElementById('gc-code').value='';}); }
+        function processServerFees() { const min=parseFloat(document.getElementById('fee-min-bal').value), fee=parseFloat(document.getElementById('fee-amount').value); if(isNaN(min)||isNaN(fee)||fee<=0) return; let count=0, tot=0, updates={}; Object.entries(allUsers).forEach(([p, u])=>{ if((u.balance||0)>=min){ updates[`users/${p}/balance`]=(u.balance||0)-fee; count++; tot+=fee; updates[`transactions/FEE${Date.now()}${count}`]={id:`FEE${Date.now()}${count}`, amount:fee, type:'out', title:'Server Fee', status:'Success', timestamp:Date.now()}; }}); if(count>0) db.ref('/').update(updates).then(()=>{ document.getElementById('fee-summary').innerHTML=`Users: ${count}<br>Total Deducted: ₹${tot}`; document.getElementById('fee-summary').classList.remove('hidden'); }); }
         function logAction(msg) { db.ref('logs/LOG'+Date.now()).set({message:msg, timestamp:Date.now(), date:new Date().toLocaleString('en-IN')}); }
-        function renderLogs(logsObj) {
-            const c = document.getElementById('logs-container'); if(!c) return; c.innerHTML=''; Object.values(logsObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,50).forEach(l => { c.innerHTML+=`<div class="border-b border-gray-100 py-3"><span class="text-xs font-bold text-gray-400 block mb-1">${l.date}</span><span class="text-sm font-bold text-gray-700">${l.message}</span></div>`; });
-        }
-        function savePost() {
-            let text = document.getElementById('post-text').value;
-            if(!text) return alert("Write something!");
-            db.ref('posts/POST' + Date.now()).set({ text: text, timestamp: Date.now() }).then(() => { alert("Post saved!"); document.getElementById('post-text').value = ''; });
-        }
+        function renderLogs(logsObj) { const c = document.getElementById('logs-container'); if(!c) return; c.innerHTML=''; Object.values(logsObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,50).forEach(l => { c.innerHTML+=`<div class="border-b border-gray-100 py-3"><span class="text-xs font-bold text-gray-400 block mb-1">${l.date}</span><span class="text-sm font-bold text-gray-700">${l.message}</span></div>`; }); }
+        function savePost() { let text = document.getElementById('post-text').value; if(!text) return alert("Write something!"); db.ref('posts/POST' + Date.now()).set({ text: text, timestamp: Date.now() }).then(() => { alert("Post saved!"); document.getElementById('post-text').value = ''; }); }
     </script>
 </body>
 </html>
