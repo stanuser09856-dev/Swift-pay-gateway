@@ -15,14 +15,12 @@ export default function handler(req, res) {
     const url = req.url || '';
     let adminMode = null;
 
-    // URL Query ke hisaab se Mode Decide karna
     if (url.includes('adminchandan')) {
         adminMode = 'SUPER';
     } else if (url.includes('adminbhaiid')) {
         adminMode = 'RESTRICTED';
     }
 
-    // Agar unauthorized access hai toh block karo (Purana URL delete)
     if (!adminMode) {
         res.setHeader('Content-Type', 'text/html');
         return res.status(403).send(`
@@ -47,7 +45,6 @@ export default function handler(req, res) {
         }
     }
     
-    // Config ke sath-sath Admin Mode bhi inject kar rahe hain
     const configScript = `
         const firebaseConfig = ${JSON.stringify(firebaseConfig)};
         window.ADMIN_MODE = '${adminMode}';
