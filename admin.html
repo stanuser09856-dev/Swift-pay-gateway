@@ -220,6 +220,11 @@
                                 </div>
                             </div>
                             
+                            <p class="text-xs font-bold text-gray-400 mb-3 uppercase text-center tracking-widest">Match Controls</p>
+                            <div class="flex justify-center mb-6">
+                                <button id="btn-toggle-betting" onclick="toggleBettingStatus()" class="bg-yellow-500 text-white font-black py-3 px-8 rounded-xl shadow-md hover:bg-yellow-600 transition-colors text-xs sm:text-sm">LOCK BETTING</button>
+                            </div>
+                            
                             <p class="text-xs font-bold text-gray-400 mb-3 uppercase text-center tracking-widest">Declare Winner (Settlement)</p>
                             <div class="grid grid-cols-3 gap-3">
                                 <button onclick="declareWinner('A')" class="bg-indigo-600 text-white font-black py-3 rounded-xl shadow-md hover:bg-indigo-700 transition-colors text-xs sm:text-sm">A WINS</button>
@@ -681,6 +686,15 @@
                     document.getElementById('ui-team-b').innerText = currentMatch.teamB;
                     document.getElementById('ui-pool-a').innerText = currentMatch.totalA || 0;
                     document.getElementById('ui-pool-b').innerText = currentMatch.totalB || 0;
+                    
+                    const btnToggle = document.getElementById('btn-toggle-betting');
+                    if (currentMatch.bettingLocked) {
+                        btnToggle.innerText = "UNLOCK BETTING";
+                        btnToggle.className = "bg-green-500 text-white font-black py-3 px-8 rounded-xl shadow-md hover:bg-green-600 transition-colors text-xs sm:text-sm";
+                    } else {
+                        btnToggle.innerText = "LOCK BETTING";
+                        btnToggle.className = "bg-yellow-500 text-white font-black py-3 px-8 rounded-xl shadow-md hover:bg-yellow-600 transition-colors text-xs sm:text-sm";
+                    }
                 } else {
                     document.getElementById('current-match-ui').classList.add('hidden');
                     document.getElementById('no-match-ui').classList.remove('hidden');
@@ -692,6 +706,11 @@
 
         // --- MATCH MANAGER LOGIC ---
         function createMatch() {
+            if (currentMatch && currentMatch.status === 'ACTIVE') {
+                alert("Already 1 match is live! Settle or delete the current match before creating a new one.");
+                return;
+            }
+            
             const teamA = document.getElementById('match-team-a').value.toUpperCase();
             const teamB = document.getElementById('match-team-b').value.toUpperCase();
             const matchId = 'M' + Date.now();
@@ -703,6 +722,7 @@
                 totalA: 0,
                 totalB: 0,
                 status: 'ACTIVE',
+                bettingLocked: false,
                 timestamp: Date.now()
             }).then(() => {
                 alert("Match Started Successfully!");
@@ -710,6 +730,15 @@
                 document.getElementById('match-team-b').value = '';
                 logAction(`Started Match: ${teamA} vs ${teamB}`);
             });
+        }
+        
+        function toggleBettingStatus() {
+            if (!currentMatch) return;
+            const newStatus = !currentMatch.bettingLocked;
+            if (!confirm(`Are you sure you want to ${newStatus ? 'LOCK' : 'UNLOCK'} betting for this match?`)) return;
+            db.ref('matches/current').update({ bettingLocked: newStatus }).then(() => {
+                logAction(`Match Betting ${newStatus ? 'Locked' : 'Unlocked'}`);
+            }).catch(e => alert("Error: " + e.message));
         }
 
         async function declareWinner(winnerTeam) {
@@ -898,7 +927,7 @@
         function createAdminGiftCode() { const c=document.getElementById('gc-code').value.toUpperCase(), a=parseFloat(document.getElementById('gc-amount').value), u=parseInt(document.getElementById('gc-users').value); if(c.length!==5) return alert("5 chars required!"); db.ref('giftcodes/'+c).set({amountPerUser:a, remainingUsers:u, totalUsers:u, createdBy:'ADMIN'}).then(()=>{ alert("Code Created!"); document.getElementById('gc-code').value='';}); }
         function processServerFees() { const min=parseFloat(document.getElementById('fee-min-bal').value), fee=parseFloat(document.getElementById('fee-amount').value); if(isNaN(min)||isNaN(fee)||fee<=0) return; let count=0, tot=0, updates={}; Object.entries(allUsers).forEach(([p, u])=>{ if((u.balance||0)>=min){ updates[`users/${p}/balance`]=(u.balance||0)-fee; count++; tot+=fee; updates[`transactions/FEE${Date.now()}${count}`]={id:`FEE${Date.now()}${count}`, amount:fee, type:'out', title:'Server Fee', status:'Success', timestamp:Date.now()}; }}); if(count>0) db.ref('/').update(updates).then(()=>{ document.getElementById('fee-summary').innerHTML=`Users: ${count}<br>Total Deducted: ₹${tot}`; document.getElementById('fee-summary').classList.remove('hidden'); }); }
         function logAction(msg) { db.ref('logs/LOG'+Date.now()).set({message:msg, timestamp:Date.now(), date:new Date().toLocaleString('en-IN')}); }
-        function renderLogs(logsObj) { const c = document.getElementById('logs-container'); if(!c) return; c.innerHTML=''; Object.values(logsObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,50).forEach(l => { c.innerHTML+=`<div class="border-b border-gray-100 py-3"><span class="text-xs font-bold text-gray-400 block mb-1">${l.date}</span><span class="text-sm font-bold text-gray-700">${l.message}</span></div>`; }); }
+        function renderLogs(logsObj) { const c = document.getElementById('logs-container'); if(!c) return; c.innerHTML=''; Object.values(logsObj).sort((a,b)=>b.timestamp-a.timestamp).slice(0,50).forEach(l => { c.innerHTML+=`<div class=\"border-b border-gray-100 py-3\"><span class=\"text-xs font-bold text-gray-400 block mb-1\">${l.date}</span><span class=\"text-sm font-bold text-gray-700\">${l.message}</span></div>`; }); }
         function savePost() { let text = document.getElementById('post-text').value; if(!text) return alert("Write something!"); db.ref('posts/POST' + Date.now()).set({ text: text, timestamp: Date.now() }).then(() => { alert("Post saved!"); document.getElementById('post-text').value = ''; }); }
     </script>
 </body>
