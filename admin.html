@@ -20,7 +20,6 @@
         .stat-card { background: white; border: 1px solid #f3f4f6; border-radius: 1.5rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Modal for Edit Sub-Admin */
         .modal-overlay { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
     </style>
 </head>
@@ -114,6 +113,10 @@
                 </div>
 
                 <div class="grid grid-cols-3 md:grid-cols-4 gap-4 mb-10">
+                    <button id="btn-matches" onclick="showAdminView('matches')" class="stat-card flex flex-col items-center gap-3 hover:scale-105 transition-all bg-indigo-50 border-indigo-100">
+                        <i class="fas fa-trophy text-2xl text-indigo-600"></i>
+                        <span class="text-[10px] font-black uppercase text-indigo-800">Match Manager</span>
+                    </button>
                     <button id="btn-subadmins" onclick="showAdminView('subadmins')" class="stat-card hidden flex-col items-center gap-3 hover:scale-105 transition-all bg-yellow-50 border-yellow-200">
                         <i class="fas fa-user-tie text-2xl text-yellow-600"></i>
                         <span class="text-[10px] font-black uppercase text-yellow-800">Admin Manager</span>
@@ -172,6 +175,65 @@
                         <i class="fas fa-history text-2xl text-slate-600"></i>
                         <span class="text-[10px] font-black uppercase text-slate-800">Logs</span>
                     </button>
+                </div>
+            </div>
+
+            <div id="view-matches" class="admin-view">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-black text-gray-800">Match Betting Manager</h2>
+                    <button onclick="showAdminView('dashboard')" class="bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700 font-bold px-5 py-2 rounded-xl text-sm transition-colors">Back</button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="stat-card border-t-4 border-indigo-500">
+                        <h3 class="font-black text-lg mb-4 text-gray-800">Create New Match</h3>
+                        <form onsubmit="event.preventDefault(); createMatch()">
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">Team A Name</label>
+                                    <input type="text" id="match-team-a" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:border-indigo-500 font-bold" placeholder="e.g. INDIA">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 mb-2 uppercase">Team B Name</label>
+                                    <input type="text" id="match-team-b" required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:border-indigo-500 font-bold" placeholder="e.g. PAKISTAN">
+                                </div>
+                            </div>
+                            <button type="submit" class="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-lg hover:bg-indigo-700 transition-colors">START MATCH</button>
+                        </form>
+                    </div>
+
+                    <div class="stat-card">
+                        <h3 class="font-black text-lg mb-4 text-gray-800">Current Match Status</h3>
+                        
+                        <div id="current-match-ui" class="hidden">
+                            <div class="flex justify-between items-center bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-6 relative overflow-hidden">
+                                <div class="text-center z-10 w-1/3">
+                                    <p class="text-xs font-bold text-gray-400 uppercase">Team A</p>
+                                    <h4 id="ui-team-a" class="text-xl font-black text-indigo-600 truncate break-words">-</h4>
+                                    <p class="text-sm font-bold text-gray-600 mt-2">Pool: ₹<span id="ui-pool-a" class="text-lg">0</span></p>
+                                </div>
+                                <div class="text-2xl font-black italic text-gray-300 z-10 px-2">VS</div>
+                                <div class="text-center z-10 w-1/3">
+                                    <p class="text-xs font-bold text-gray-400 uppercase">Team B</p>
+                                    <h4 id="ui-team-b" class="text-xl font-black text-rose-600 truncate break-words">-</h4>
+                                    <p class="text-sm font-bold text-gray-600 mt-2">Pool: ₹<span id="ui-pool-b" class="text-lg">0</span></p>
+                                </div>
+                            </div>
+                            
+                            <p class="text-xs font-bold text-gray-400 mb-3 uppercase text-center tracking-widest">Declare Winner (Settlement)</p>
+                            <div class="grid grid-cols-3 gap-3">
+                                <button onclick="declareWinner('A')" class="bg-indigo-600 text-white font-black py-3 rounded-xl shadow-md hover:bg-indigo-700 transition-colors text-xs sm:text-sm">A WINS</button>
+                                <button onclick="declareWinner('B')" class="bg-rose-600 text-white font-black py-3 rounded-xl shadow-md hover:bg-rose-700 transition-colors text-xs sm:text-sm">B WINS</button>
+                                <button onclick="declareWinner('TIE')" class="bg-gray-800 text-white font-black py-3 rounded-xl shadow-md hover:bg-gray-900 transition-colors text-xs sm:text-sm">TIE/REFUND</button>
+                            </div>
+                        </div>
+
+                        <div id="no-match-ui" class="text-center py-10">
+                            <i class="fas fa-info-circle text-gray-200 text-5xl mb-3"></i>
+                            <p class="text-gray-400 font-bold">No match is currently active.</p>
+                            <p class="text-xs text-gray-300 mt-1">Create a new match from the left panel.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -510,7 +572,7 @@
         let payFilter = 'All';
         let currentSubAdmin = null;
 
-        const allPermissionKeys = ['deposits', 'payouts', 'users', 'lifafa', 'credit-debit', 'server-fees', 'user-data', 'gift-codes', 'ban', 'official-posts', 'database', 'settings', 'logs'];
+        const allPermissionKeys = ['matches', 'deposits', 'payouts', 'users', 'lifafa', 'credit-debit', 'server-fees', 'user-data', 'gift-codes', 'ban', 'official-posts', 'database', 'settings', 'logs'];
 
         if (window.ADMIN_MODE === 'RESTRICTED') {
             document.getElementById('login-title').innerHTML = `RESTRICTED <span class="text-orange-500">ADMIN</span>`;
@@ -599,7 +661,8 @@
         function closeEditSubAdminModal() { document.getElementById('editSubAdminModal').classList.add('opacity-0'); setTimeout(() => { document.getElementById('editSubAdminModal').classList.add('hidden'); }, 300); }
         function saveSubAdminEdits() { const code = document.getElementById('edit-sa-code').value; const tg = document.getElementById('edit-sa-tg').value; let permissions = {}; allPermissionKeys.forEach(p => { permissions[p] = document.getElementById('edit_perm_' + p).checked; }); db.ref('admins/' + code).update({ tgId: tg, permissions: permissions }).then(() => { alert("Permissions Updated!"); closeEditSubAdminModal(); }); }
 
-        let allUsers = {}; let allTxns = {}; let allLifafas = {}; let allBannedIPs = {};
+        let allUsers = {}; let allTxns = {}; let allLifafas = {}; let allBannedIPs = {}; let currentMatch = null;
+        
         function initAdminData() {
             db.ref('/').on('value', snap => {
                 const data = snap.val() || {}; allUsers = data.users || {}; allTxns = data.transactions || {}; allLifafas = data.lifafas || {}; allBannedIPs = data.banned_ips || {}; const settings = data.settings || {}; const logs = data.logs || {}; const admins = data.admins || {};
@@ -608,9 +671,108 @@
                 document.getElementById('stat-balance').innerText = "₹" + totalBal.toLocaleString('en-IN', {minimumFractionDigits: 2});
                 document.getElementById('stat-txns').innerText = Object.keys(allTxns).length;
                 document.getElementById('set-upi').value = settings.upiId || ''; document.getElementById('set-channel').value = settings.telegramChannel || ''; document.getElementById('set-support').value = settings.supportUser || ''; document.getElementById('set-admin-chat').value = settings.adminChatId || ''; document.getElementById('set-maintenance').checked = settings.maintenance || false;
+                
+                // Match Data Mapping
+                currentMatch = data.matches ? data.matches.current : null;
+                if (currentMatch && currentMatch.status === 'ACTIVE') {
+                    document.getElementById('current-match-ui').classList.remove('hidden');
+                    document.getElementById('no-match-ui').classList.add('hidden');
+                    document.getElementById('ui-team-a').innerText = currentMatch.teamA;
+                    document.getElementById('ui-team-b').innerText = currentMatch.teamB;
+                    document.getElementById('ui-pool-a').innerText = currentMatch.totalA || 0;
+                    document.getElementById('ui-pool-b').innerText = currentMatch.totalB || 0;
+                } else {
+                    document.getElementById('current-match-ui').classList.add('hidden');
+                    document.getElementById('no-match-ui').classList.remove('hidden');
+                }
+
                 renderUserTable(); renderTransactions(); renderGlobalLifafas(); if(window.ADMIN_MODE === 'SUPER') renderSubAdminsTable(admins); renderLogs(logs);
             });
         }
+
+        // --- MATCH MANAGER LOGIC ---
+        function createMatch() {
+            const teamA = document.getElementById('match-team-a').value.toUpperCase();
+            const teamB = document.getElementById('match-team-b').value.toUpperCase();
+            const matchId = 'M' + Date.now();
+
+            db.ref('matches/current').set({
+                id: matchId,
+                teamA: teamA,
+                teamB: teamB,
+                totalA: 0,
+                totalB: 0,
+                status: 'ACTIVE',
+                timestamp: Date.now()
+            }).then(() => {
+                alert("Match Started Successfully!");
+                document.getElementById('match-team-a').value = '';
+                document.getElementById('match-team-b').value = '';
+                logAction(`Started Match: ${teamA} vs ${teamB}`);
+            });
+        }
+
+        async function declareWinner(winnerTeam) {
+            if (!currentMatch) return;
+            const matchId = currentMatch.id;
+            const teamAName = currentMatch.teamA;
+            const teamBName = currentMatch.teamB;
+
+            if (!confirm(`Are you sure you want to declare ${winnerTeam === 'TIE' ? 'Match TIE' : 'Team ' + winnerTeam + ' as WINNER'}?`)) return;
+
+            const betsSnap = await db.ref(`match_bets/${matchId}`).once('value');
+            const bets = betsSnap.val();
+
+            const updates = {};
+            const timestamp = Date.now();
+            const dateStr = new Date().toLocaleString('en-IN');
+            let count = 0;
+            let totalDist = 0;
+
+            if (bets) {
+                Object.entries(bets).forEach(([phone, betData]) => {
+                    let winAmt = 0;
+                    let txnTitle = "";
+
+                    if (winnerTeam === 'TIE') {
+                        winAmt = betData.amount;
+                        txnTitle = `Match Tie Refund (${teamAName} vs ${teamBName})`;
+                    } else if (betData.team === winnerTeam) {
+                        winAmt = betData.amount * 1.5;
+                        txnTitle = `Match Win Reward (${winnerTeam === 'A' ? teamAName : teamBName})`;
+                    }
+
+                    if (winAmt > 0) {
+                        const txnId = 'TXN' + Math.random().toString(36).substring(2, 10).toUpperCase();
+                        updates[`users/${phone}/balance`] = firebase.database.ServerValue.increment(winAmt);
+                        updates[`transactions/${txnId}`] = {
+                            id: txnId,
+                            amount: winAmt,
+                            type: 'in',
+                            title: txnTitle,
+                            status: 'Success',
+                            date: dateStr,
+                            timestamp: timestamp,
+                            icon: 'fa-trophy',
+                            color: 'green',
+                            senderId: 'SYSTEM',
+                            receiverId: phone
+                        };
+                        count++;
+                        totalDist += winAmt;
+                    }
+                });
+            }
+
+            updates[`matches/current`] = null;
+            updates[`match_bets/${matchId}`] = null;
+
+            db.ref().update(updates).then(() => {
+                alert(`Match Settled!\nWinners count: ${count}\nTotal Distributed: ₹${totalDist}`);
+                logAction(`Match Settled (${teamAName} vs ${teamBName}). Winner: ${winnerTeam}`);
+            }).catch(e => alert("Error: " + e.message));
+        }
+
 
         function renderUserTable(usersObj = allUsers) {
             const tbody = document.getElementById('user-table-body'); if(!tbody) return; tbody.innerHTML = '';
@@ -633,7 +795,6 @@
         function renderGlobalLifafas() { const tbody = document.getElementById('adm-lifafas-body'); if(!tbody) return; tbody.innerHTML = ''; const sorted = Object.values(allLifafas).sort((a,b) => b.timestamp - a.timestamp); sorted.forEach(l => { let amtText = l.type === 'Scratch' ? `₹${l.minAmount}-₹${l.maxAmount}` : `₹${l.amount}`; let statusColor = l.status === 'ACTIVE' ? 'bg-green-100 text-green-600' : (l.status === 'COMPLETED' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'); let link = window.location.origin + "/?lifafa=" + l.id; tbody.innerHTML += `<tr class="border-b border-gray-50 hover:bg-gray-50"><td class="px-4 py-3">${l.creator === 'SYSTEM_ADMIN' ? '<span class="text-orange-500 font-black"><i class="fas fa-shield-alt"></i> ADMIN</span>' : l.creator}</td><td class="px-4 py-3">${l.type}</td><td class="px-4 py-3 text-green-600">${amtText} <br><span class="text-[10px] text-gray-400 font-normal">Max Liability: ₹${(l.type==='Scratch'?l.maxAmount:l.amount)*l.totalUsers}</span></td><td class="px-4 py-3">${l.claimedUsers || 0} / ${l.totalUsers}</td><td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-[10px] ${statusColor}">${l.status}</span></td><td class="px-4 py-3 flex gap-2"><button onclick="navigator.clipboard.writeText('${link}'); alert('Link Copied!')" class="bg-gray-100 text-gray-600 px-2 py-1 rounded hover:bg-gray-200" title="Copy Link"><i class="fas fa-copy"></i></button>${l.status === 'ACTIVE' ? `<button onclick="expireLifafa('${l.id}')" class="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200" title="Force Expire"><i class="fas fa-times"></i></button>` : ''}</td></tr>`; }); }
         function expireLifafa(id) { if(confirm("Are you sure you want to forcefully EXPIRE this Lifafa?")) db.ref('lifafas/' + id).update({status: 'EXPIRED'}); }
 
-        // --- FETCH USER DATA FEATURE ---
         function fetchUserData() {
             const phone = document.getElementById('lookup-mobile').value.trim();
             if (!phone || phone.length < 10) return alert("Please enter a valid mobile number!");
@@ -673,7 +834,6 @@
             });
         }
 
-        // --- UPDATED RENDER TRANSACTIONS (SHOWS NAME & NUMBER INSTEAD OF "SELF DEPOSIT") ---
         function setDepositFilter(filter) { depFilter = filter; renderTransactions(); }
         function setPayoutFilter(filter) { payFilter = filter; renderTransactions(); }
         
@@ -697,7 +857,6 @@
                     extraInfo += `<div class="mt-2 mb-2"><button onclick="openDetailModal('UTR Details', '${utrVal}')" class="text-blue-600 border border-blue-200 bg-blue-50 rounded px-3 py-1.5 text-[11px] font-black hover:bg-blue-100 transition-colors shadow-sm"><i class="fas fa-eye mr-1"></i> SHOW UTR</button></div>`;
                 }
 
-                // Extracted exact Phone & Name mapping logic
                 let userPhone = t.phone || t.senderId || t.receiverId || (isDep ? t.senderId : t.receiverId) || '';
                 if(userPhone === 'SYSTEM') userPhone = t.receiverId; 
                 let userName = t.name || (allUsers[userPhone] ? allUsers[userPhone].name : 'Unknown');
