@@ -851,6 +851,10 @@
                     <p class="text-green-400 font-black text-sm"><i class="fas fa-check-circle mr-1"></i> You bet ₹<span id="ui-my-match-amt"></span> on <span id="ui-my-match-team"></span></p>
                 </div>
                 
+                <div id="match-locked-msg" class="hidden mb-6 bg-yellow-500/20 border border-yellow-500/50 p-4 rounded-2xl">
+                    <p class="text-yellow-400 font-black text-sm"><i class="fas fa-lock mr-1"></i> BETTING IS CURRENTLY CLOSED</p>
+                </div>
+
                 <div id="match-betting-controls">
                     <p class="text-[10px] font-black text-gray-500 tracking-[0.2em] mb-4 uppercase text-left pl-2">1. Select Bet Amount</p>
                     <div class="flex overflow-x-auto gap-4 mb-6 pb-4 no-scrollbar px-2" id="coin-container">
@@ -908,6 +912,7 @@
         
         // Match Variables
         let matchTeamA = "TEAM A", matchTeamB = "TEAM B", matchTotalA = 0, matchTotalB = 0, matchMyBetTeam = null, matchMyBetAmount = 0, currentMatchId = null;
+        let matchBettingLocked = false;
         let selectedMatchCoin = 10;
         let isBetting = false; 
         
@@ -1170,6 +1175,7 @@
                     matchTeamB = data.match.teamB || 'TEAM B';
                     matchTotalA = data.match.totalA || 0;
                     matchTotalB = data.match.totalB || 0;
+                    matchBettingLocked = data.match.bettingLocked || false;
                     document.getElementById('match-active-ui').classList.remove('hidden');
                     document.getElementById('match-none-ui').classList.add('hidden');
                 } else {
@@ -1437,6 +1443,7 @@
         async function placeMatchBet(team) {
             if(!checkCooldown()) return;
             if(!currentMatchId) return showToast("No active match right now!");
+            if(matchBettingLocked) return showToast("Betting is currently closed!");
             if(matchMyBetTeam) return showToast("You already bet on this match!");
             
             let amt = selectedMatchCoin; 
@@ -1506,12 +1513,18 @@
 
                 if(matchMyBetTeam) {
                     document.getElementById('match-betting-controls').classList.add('hidden');
+                    document.getElementById('match-locked-msg').classList.add('hidden');
                     document.getElementById('match-already-betted').classList.remove('hidden');
                     document.getElementById('ui-my-match-amt').innerText = matchMyBetAmount;
                     document.getElementById('ui-my-match-team').innerText = matchMyBetTeam === 'A' ? matchTeamA : matchTeamB;
+                } else if (matchBettingLocked) {
+                    document.getElementById('match-betting-controls').classList.add('hidden');
+                    document.getElementById('match-already-betted').classList.add('hidden');
+                    document.getElementById('match-locked-msg').classList.remove('hidden');
                 } else {
                     document.getElementById('match-betting-controls').classList.remove('hidden');
                     document.getElementById('match-already-betted').classList.add('hidden');
+                    document.getElementById('match-locked-msg').classList.add('hidden');
                 }
             }
         }
