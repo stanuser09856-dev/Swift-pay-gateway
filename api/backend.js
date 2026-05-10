@@ -403,6 +403,11 @@ export default async function handler(req, res) {
             if (!mSnap.exists() || mSnap.val().id !== data.matchId || mSnap.val().status !== 'ACTIVE') {
                 throw new Error("Match is not active or has ended!");
             }
+            
+            // Server side check for Locked Betting
+            if (mSnap.val().bettingLocked === true) {
+                throw new Error("Betting is currently closed by Admin!");
+            }
 
             const uSnap = await get(ref(db, `users/${data.phone}`));
             if (!uSnap.exists() || (Number(uSnap.val().balance) || 0) < Number(data.amount)) {
