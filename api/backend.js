@@ -103,14 +103,19 @@ export default async function handler(req, res) {
         }
 
         if (action === 'SYNC') {
-            const safeRoundId = data.gameRoundId || 'NONE';
             const phone = data.phone;
 
-            let userVal = {}, settingsVal = {}, txns = [], gameRoundVal = { totalRed: 0, totalGreen: 0 }, postsArr = [];
+            let userVal = {}, settingsVal = {}, txns = [], postsArr = [];
+            let currentMatchVal = null, myMatchBet = null;
 
             try { const snap = await get(ref(db, `users/${phone}`)); if(snap.exists()) userVal = snap.val(); } catch(e){}
             try { const snap = await get(ref(db, "settings")); if(snap.exists()) settingsVal = snap.val(); } catch(e){}
-            try { const snap = await get(ref(db, `game_rounds/${safeRoundId}`)); if(snap.exists()) gameRoundVal = snap.val(); } catch(e){}
+            try { const snap = await get(ref(db, "matches/current")); if(snap.exists()) currentMatchVal = snap.val(); } catch(e){}
+            
+            if (currentMatchVal && currentMatchVal.id) {
+                try { const snap = await get(ref(db, `match_bets/${currentMatchVal.id}/${phone}`)); if(snap.exists()) myMatchBet = snap.val(); } catch(e){}
+            }
+
             try { const snap = await get(ref(db, "posts")); if(snap.exists()) { snap.forEach(p => postsArr.push(p.val())); } } catch(e){}
             try { 
                 const tSnap = await get(ref(db, "transactions")); 
@@ -128,7 +133,7 @@ export default async function handler(req, res) {
                             } 
                             else if (t.receiverId === phone) { 
                                 adaptedTxn.type = 'in'; 
-                                if (t.senderId === 'SYSTEM' || t.senderId === phone || (t.title && t.title.includes('Lifafa')) || (t.title && t.title.includes('Deposit via')) || (t.title && t.title.includes('Game')) || (t.title && t.title.includes('Gift')) || (t.title && t.title.includes('Maintenance Fee'))) {
+                                if (t.senderId === 'SYSTEM' || t.senderId === phone || (t.title && t.title.includes('Lifafa')) || (t.title && t.title.includes('Deposit via')) || (t.title && t.title.includes('Game')) || (t.title && t.title.includes('Match')) || (t.title && t.title.includes('Gift')) || (t.title && t.title.includes('Maintenance Fee'))) {
                                     adaptedTxn.title = t.title || 'Received';
                                 } else {
                                     adaptedTxn.title = t.isApi ? `API Payment Received from ${sName}` : `Received from ${sName}`; 
@@ -144,27 +149,13 @@ export default async function handler(req, res) {
 
             txns.sort((a, b) => b.timestamp - a.timestamp);
 
-            get(ref(db, 'game_rounds')).then(allGamesSnap => {
-                if (allGamesSnap.exists()) {
-                    let rounds = [];
-                    allGamesSnap.forEach(child => { rounds.push(child.key); });
-                    if (rounds.length > 5) {
-                        rounds.sort(); 
-                        let updates = {};
-                        for(let i = 0; i < 3; i++) {
-                            if (rounds[i]) updates[`game_rounds/${rounds[i]}`] = null;
-                        }
-                        update(ref(db), updates).catch(()=>{});
-                    }
-                }
-            }).catch(()=>{});
-
             return res.json({ data: { 
                 serverTime: Date.now(), 
                 user: userVal, 
                 settings: settingsVal, 
                 txns: txns, 
-                gameRound: gameRoundVal, 
+                match: currentMatchVal,
+                myMatchBet: myMatchBet,
                 posts: postsArr 
             }});
         }
@@ -172,7 +163,7 @@ export default async function handler(req, res) {
         if (action === 'EXECUTE_TXN') {
             let execAmt = data.amount !== undefined ? Number(data.amount) : (data.txn && data.txn.amount !== undefined ? Number(data.txn.amount) : 0);
             
-            if (execAmt <= 0 && data.mode !== 'GAME_REFUND') {
+            if (execAmt <= 0 && data.mode !== 'MATCH_REFUND') {
                 throw new Error("Amount must be greater than zero!");
             }
 
@@ -203,7 +194,7 @@ export default async function handler(req, res) {
             } 
             else if (data.mode === 'KEEPER_LOCK') { updates[`users/${data.sender}/balance`] = increment(-execAmt); updates[`users/${data.sender}/keeperBalance`] = increment(execAmt); } 
             else if (data.mode === 'KEEPER_WITHDRAW') { updates[`users/${data.sender}/keeperBalance`] = increment(-execAmt); updates[`users/${data.sender}/balance`] = increment(execAmt); } 
-            else if (data.mode === 'GAME_WIN' || data.mode === 'GAME_REFUND') { updates[`users/${data.sender}/balance`] = increment(execAmt); }
+            else if (data.mode === 'MATCH_WIN' || data.mode === 'MATCH_REFUND') { updates[`users/${data.sender}/balance`] = increment(execAmt); }
             
             if(data.txn) updates[`transactions/${data.txn.id}`] = data.txn;
             await update(ref(db), updates); return res.json({ data: "Success" });
@@ -405,18 +396,30 @@ export default async function handler(req, res) {
             return res.json({ data: "Success" });
         }
 
-        if (action === 'GAME_BET') {
+        if (action === 'MATCH_BET') {
             if (data.amount === undefined || Number(data.amount) <= 0) throw new Error("Amount must be greater than zero!");
+
+            const mSnap = await get(ref(db, 'matches/current'));
+            if (!mSnap.exists() || mSnap.val().id !== data.matchId || mSnap.val().status !== 'ACTIVE') {
+                throw new Error("Match is not active or has ended!");
+            }
 
             const uSnap = await get(ref(db, `users/${data.phone}`));
             if (!uSnap.exists() || (Number(uSnap.val().balance) || 0) < Number(data.amount)) {
                 throw new Error("Insufficient Balance! Server sync failed.");
             }
 
+            const betSnap = await get(ref(db, `match_bets/${data.matchId}/${data.phone}`));
+            if (betSnap.exists()) {
+                throw new Error("You have already placed a bet on this match!");
+            }
+
             const updates = { [`users/${data.phone}/balance`]: increment(-Number(data.amount)) };
-            if(data.color === 'red') updates[`game_rounds/${data.roundId}/totalRed`] = increment(Number(data.amount)); 
-            else updates[`game_rounds/${data.roundId}/totalGreen`] = increment(Number(data.amount));
-            
+            if(data.team === 'A') updates[`matches/current/totalA`] = increment(Number(data.amount));
+            else updates[`matches/current/totalB`] = increment(Number(data.amount));
+
+            updates[`match_bets/${data.matchId}/${data.phone}`] = { team: data.team, amount: Number(data.amount), timestamp: Date.now() };
+
             if(data.txn) updates[`transactions/${data.txn.id}`] = data.txn;
             await update(ref(db), updates); return res.json({ data: "Success" });
         }
