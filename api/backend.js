@@ -15,6 +15,7 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 const BOT_TOKEN = "8440520277:AAG-DcrzOHZ2jFtvMofUdgxK2ATPFvdwkwM";
+const BOT_USER_ID = "8440520277"; 
 
 const getUserIP = (req) => {
     let ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
@@ -47,6 +48,34 @@ async function checkTgMembership(channelUrl, tgUserId) {
         }
     } catch(e) {
         return true; 
+    }
+}
+
+async function verifyBotIsAdmin(channelUrl) {
+    try {
+        if (!channelUrl) return true;
+        let chatId = channelUrl.trim();
+        
+        if (chatId.includes('t.me/')) {
+            let path = chatId.split('t.me/')[1].split('/')[0];
+            if (path.startsWith('+') || path.startsWith('joinchat')) {
+                return true; 
+            }
+            chatId = '@' + path;
+        }
+
+        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${BOT_USER_ID}`);
+        const json = await res.json();
+        
+        if (json.ok) {
+            const status = json.result.status;
+            if (['administrator', 'creator'].includes(status)) return true;
+            return false;
+        } else {
+            return false; 
+        }
+    } catch(e) {
+        return false; 
     }
 }
 
@@ -252,16 +281,33 @@ export default async function handler(req, res) {
         }
 
         if (action === 'CREATE_LIFAFA') {
-            let totalDeduct = 0;
-            if (data.type === 'Scratch') {
-                totalDeduct = Number(data.maxAmount) * Number(data.totalUsers);
-            } else {
-                totalDeduct = Number(data.amount) * Number(data.totalUsers);
+            if (data.channels && data.channels.length > 0) {
+                for (let channel of data.channels) {
+                    let isBotAdmin = await verifyBotIsAdmin(channel);
+                    if (!isBotAdmin) {
+                        throw new Error(`Bot is not an Admin in channel: ${channel}. Please promote the bot first!`);
+                    }
+                }
             }
+
+            let baseDeduct = 0;
+            if (data.type === 'Scratch') {
+                baseDeduct = Number(data.maxAmount) * Number(data.totalUsers);
+            } else {
+                baseDeduct = Number(data.amount) * Number(data.totalUsers);
+            }
+            
+            let referDeduct = 0;
+            if (data.referEnabled && Number(data.referAmount) > 0) {
+                referDeduct = Number(data.referAmount) * Number(data.totalUsers);
+            }
+
+            let totalDeduct = baseDeduct + referDeduct;
+
             if (totalDeduct <= 0) throw new Error("Invalid Lifafa Configuration!");
 
             const uSnap = await get(ref(db, `users/${data.phone}`));
-            if (!uSnap.exists() || (Number(uSnap.val().balance) || 0) < totalDeduct) throw new Error("Insufficient Balance!");
+            if (!uSnap.exists() || (Number(uSnap.val().balance) || 0) < totalDeduct) throw new Error(`Insufficient Balance! Need ₹${totalDeduct}`);
             
             const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
             let lifafaId = '';
@@ -279,7 +325,9 @@ export default async function handler(req, res) {
                 timestamp: Date.now(), 
                 status: 'ACTIVE', 
                 channels: Array.isArray(data.channels) ? data.channels : [], 
-                code: (data.code && data.code.trim() !== "") ? data.code.trim() : "" 
+                code: (data.code && data.code.trim() !== "") ? data.code.trim() : "",
+                referEnabled: data.referEnabled || false,
+                referAmount: data.referEnabled ? Number(data.referAmount) : 0
             };
 
             const updates = { 
@@ -303,7 +351,13 @@ export default async function handler(req, res) {
             }
 
             if (lData.status !== 'ACTIVE') throw new Error("Lifafa is fully claimed or expired.");
-            return res.json({ data: { type: lData.type, channels: lData.channels || [], hasCode: (lData.code && lData.code.trim() !== "") } });
+            return res.json({ data: { 
+                type: lData.type, 
+                channels: lData.channels || [], 
+                hasCode: (lData.code && lData.code.trim() !== ""),
+                referEnabled: lData.referEnabled || false,
+                referAmount: lData.referAmount || 0
+            }});
         }
 
         if (action === 'GET_MY_LIFAFAS') {
@@ -390,6 +444,9 @@ export default async function handler(req, res) {
             }
 
             let wonAmount = 0;
+            let finalReferEnabled = false;
+            let finalReferAmount = 0;
+            
             await update(ref(db), { dummy: null }); 
             
             const result = await runTransaction(lifafaRef, (currentData) => {
@@ -415,6 +472,9 @@ export default async function handler(req, res) {
             if (!result.committed) throw new Error("Lifafa invalid, fully claimed, or already claimed by your device!");
             
             let resultData = result.snapshot.val();
+            finalReferEnabled = resultData.referEnabled || false;
+            finalReferAmount = Number(resultData.referAmount) || 0;
+
             if (resultData.type === 'Scratch') {
                 let min = Number(resultData.minAmount) || 1;
                 let max = Number(resultData.maxAmount) || Number(resultData.amount) || 1;
@@ -430,6 +490,22 @@ export default async function handler(req, res) {
             if (wonAmount > 0) {
                 updates[`transactions/${data.txn.id}`] = { ...data.txn, amount: wonAmount };
             }
+
+            if (wonAmount > 0 && data.referBy && data.referBy !== data.phone && finalReferEnabled && finalReferAmount > 0) {
+                const uSnap = await get(ref(db, `users/${data.referBy}`));
+                if (uSnap.exists()) {
+                    let referTxnId = 'TXN' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase();
+                    updates[`users/${data.referBy}/balance`] = increment(finalReferAmount);
+                    updates[`transactions/${referTxnId}`] = { 
+                        id: referTxnId, type: 'in', title: 'Lifafa Referral Bonus', 
+                        amount: finalReferAmount, status: 'Success', 
+                        date: new Date().toLocaleString('en-IN', { hour12: true, day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }), 
+                        timestamp: Date.now(), icon: 'fa-users', color: 'green', 
+                        name: 'Lifafa System', number: 'N/A', senderId: 'SYSTEM', receiverId: data.referBy 
+                    };
+                }
+            }
+
             await update(ref(db), updates); 
             return res.json({ data: wonAmount });
         }
