@@ -14,10 +14,41 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
+const BOT_TOKEN = "8440520277:AAG-DcrzOHZ2jFtvMofUdgxK2ATPFvdwkwM";
+
 const getUserIP = (req) => {
     let ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
     return ip.split(',')[0].trim().replace(/\./g, '_');
 };
+
+async function checkTgMembership(channelUrl, tgUserId) {
+    try {
+        if (!channelUrl || !tgUserId) return true;
+        let chatId = channelUrl.trim();
+        
+        if (chatId.includes('t.me/')) {
+            let path = chatId.split('t.me/')[1].split('/')[0];
+            if (path.startsWith('+') || path.startsWith('joinchat')) {
+                return true; 
+            }
+            chatId = '@' + path;
+        }
+
+        const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getChatMember?chat_id=${chatId}&user_id=${tgUserId}`);
+        const json = await res.json();
+        
+        if (json.ok) {
+            const status = json.result.status;
+            if (['member', 'administrator', 'creator', 'restricted'].includes(status)) return true;
+            return false;
+        } else {
+            if (json.error_code === 400 && json.description.includes("user not found")) return false;
+            return true; 
+        }
+    } catch(e) {
+        return true; 
+    }
+}
 
 export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -312,6 +343,21 @@ export default async function handler(req, res) {
                 throw new Error("Invalid Unique Access Code!");
             }
 
+            if (lData.channels && lData.channels.length > 0) {
+                const uSnap = await get(ref(db, `users/${data.phone}`));
+                if (!uSnap.exists()) throw new Error("User account not found!");
+                const tgUserId = uSnap.val().tgUserId;
+                
+                if (!tgUserId) throw new Error("Please register your Telegram User ID first to claim this Lifafa.");
+                
+                for (let channel of lData.channels) {
+                    let isMember = await checkTgMembership(channel, tgUserId);
+                    if (!isMember) {
+                        throw new Error("First join all channels to claim this Lifafa!");
+                    }
+                }
+            }
+
             let wonAmount = 0;
             await update(ref(db), { dummy: null }); 
             
@@ -404,7 +450,6 @@ export default async function handler(req, res) {
                 throw new Error("Match is not active or has ended!");
             }
             
-            // Server side check for Locked Betting
             if (mSnap.val().bettingLocked === true) {
                 throw new Error("Betting is currently closed by Admin!");
             }
