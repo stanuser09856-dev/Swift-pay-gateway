@@ -54,6 +54,28 @@
         @keyframes scanline { 0% { top: 5%; opacity: 0; } 10% { opacity: 1; } 50% { top: 95%; } 90% { opacity: 1; } 100% { top: 5%; opacity: 0; } }
         .animate-scanline { animation: scanline 2.5s ease-in-out infinite; }
         
+        /* Custom Checkbox */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #4f46e5;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4f46e5;
+        }
+        .toggle-checkbox {
+            right: 4px;
+            z-index: 1;
+            border-color: #e5e7eb;
+            transition: all 0.3s;
+        }
+        .toggle-label {
+            width: 3.5rem;
+            height: 2rem;
+            background-color: #e5e7eb;
+            border-radius: 9999px;
+            transition: all 0.3s;
+        }
+
         .hide-nav { display: none !important; }
     </style>
 </head>
@@ -82,17 +104,28 @@
         <h1 class="text-3xl font-black text-gray-900 tracking-tight mb-2">CLAIM <span class="text-indigo-600">REWARD</span></h1>
         <p class="text-xs font-bold text-gray-400 uppercase tracking-[0.2em] mb-8">Follow steps to grab it</p>
 
+        <form id="form-enter-number" onsubmit="event.preventDefault(); processLifafaStep1()" class="hidden w-full max-w-sm bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/50 border border-gray-100 text-left mb-4">
+            <label class="block text-xs font-black text-indigo-600 mb-6 tracking-wide uppercase text-center bg-indigo-50 py-2 rounded-lg border border-indigo-100"><i class="fas fa-mobile-screen mr-1"></i> Step 1: Your Account</label>
+            
+            <label class="block text-xs font-bold text-gray-400 mb-2 tracking-wide uppercase">SwiftPay Number</label>
+            <input type="tel" id="public-lif-phone-step1" required placeholder="Enter 10 digit number" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-lg mb-6 focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors font-black text-center tracking-wider shadow-inner">
+            
+            <button type="submit" class="btn-animate w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg shadow-gray-300 flex justify-center items-center gap-2 text-lg tracking-wide">
+                NEXT <i class="fas fa-arrow-right ml-1"></i>
+            </button>
+            <div class="text-center mt-6"><button type="button" onclick="window.location.href='/'" class="text-gray-400 hover:text-indigo-600 text-sm font-bold transition-colors">Go to Home</button></div>
+        </form>
+
         <form id="form-verify-channels" onsubmit="event.preventDefault(); processVerifyLifafaChannels()" class="hidden w-full max-w-sm bg-white rounded-3xl p-8 shadow-xl shadow-gray-200/50 border border-gray-100 text-left mb-4">
+            <input type="hidden" id="verify-lif-phone">
+            
             <div id="lifafa-channels-container" class="mb-6">
-                <label class="block text-xs font-black text-indigo-600 mb-4 tracking-wide uppercase text-center bg-indigo-50 py-2 rounded-lg border border-indigo-100"><i class="fas fa-layer-group mr-1"></i> Step 1: Join Channels</label>
+                <label class="block text-xs font-black text-indigo-600 mb-4 tracking-wide uppercase text-center bg-indigo-50 py-2 rounded-lg border border-indigo-100"><i class="fas fa-layer-group mr-1"></i> Step 2: Join Channels</label>
                 <div id="lifafa-channels-list" class="max-h-60 overflow-y-auto mb-1 pr-2 space-y-2"></div>
             </div>
             
             <p id="lifafa-verify-error" class="hidden text-xs text-red-500 font-bold mb-4 bg-red-50 py-3 px-4 rounded-xl border border-red-100 text-center"></p>
 
-            <label class="block text-xs font-bold text-gray-400 mb-2 tracking-wide uppercase">Your SwiftPay Number</label>
-            <input type="tel" id="verify-lif-phone" required placeholder="Enter 10 digit number" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-4 text-lg mb-6 focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors font-black text-center tracking-wider shadow-inner">
-            
             <button type="submit" id="btn-verify-channels" class="btn-animate w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-lg shadow-indigo-200 flex justify-center items-center gap-2 text-lg tracking-wide">
                 <i class="fas fa-user-check text-xl"></i> CHECK MEMBERSHIP
             </button>
@@ -103,11 +136,11 @@
             <input type="hidden" id="public-lif-id">
             <input type="hidden" id="public-lif-phone">
             
-            <div class="bg-green-50 text-green-600 font-black text-xs py-3 px-4 rounded-xl mb-6 text-center border border-green-100 hidden uppercase tracking-widest" id="claim-verified-msg">
-                <i class="fas fa-check-circle mr-1 text-sm"></i> Membership Verified
+            <div class="bg-green-50 text-green-600 font-black text-xs py-3 px-4 rounded-xl mb-6 text-center border border-green-100 uppercase tracking-widest" id="claim-verified-msg">
+                <i class="fas fa-check-circle mr-1 text-sm"></i> Details Verified
             </div>
 
-            <label class="block text-xs font-black text-indigo-600 mb-6 tracking-wide uppercase text-center bg-indigo-50 py-2 rounded-lg border border-indigo-100"><i class="fas fa-gift mr-1"></i> Step 2: Claim Box</label>
+            <label class="block text-xs font-black text-indigo-600 mb-6 tracking-wide uppercase text-center bg-indigo-50 py-2 rounded-lg border border-indigo-100"><i class="fas fa-gift mr-1"></i> Final Step: Claim</label>
 
             <div id="lifafa-code-box" class="hidden">
                 <label class="block text-xs font-bold text-gray-400 mb-2 tracking-wide uppercase">Unique Access Code</label>
@@ -117,13 +150,13 @@
             <p id="lifafa-claim-error" class="hidden text-xs text-red-500 font-bold mb-4 bg-red-50 py-3 px-4 rounded-xl border border-red-100 text-center"></p>
 
             <button type="submit" id="btn-claim-reward" class="btn-animate w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg shadow-gray-300 flex justify-center items-center gap-2 text-lg tracking-wide">
-                CLAIM NOW <i class="fas fa-arrow-right ml-1"></i>
+                CLAIM NOW <i class="fas fa-magic ml-1"></i>
             </button>
             <div class="text-center mt-6"><button type="button" onclick="window.location.href='/'" class="text-gray-400 hover:text-indigo-600 text-sm font-bold transition-colors">Cancel</button></div>
         </form>
 
-        <div id="lifafa-anim-box" class="hidden w-full max-w-sm bg-white rounded-3xl p-8 shadow-2xl border border-gray-100 text-center flex flex-col items-center justify-center min-h-[300px] relative overflow-hidden mt-4">
-        </div>
+        <div id="lifafa-anim-box" class="hidden w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl border border-gray-100 text-center flex flex-col items-center justify-center min-h-[300px] relative overflow-hidden mt-4">
+            </div>
     </div>
 
     <div id="maintenance-wrapper" class="fixed inset-0 bg-white/95 backdrop-blur-sm z-[9999] hidden flex-col items-center justify-center p-6 text-center">
@@ -582,6 +615,24 @@
                         <p class="text-[10px] font-bold text-indigo-600 mt-1">Make <span class="font-black text-indigo-800">@SwiftPay_Alert_Bot</span> admin in your channel to enable verification.</p>
                     </div>
 
+                    <div class="mb-5 bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                        <div class="flex justify-between items-center mb-1">
+                            <div>
+                                <h4 class="text-sm font-black text-gray-900">Refer & Earn</h4>
+                                <p class="text-[10px] font-bold text-gray-500">Reward users for sharing</p>
+                            </div>
+                            <div class="relative inline-block w-14 h-8 align-middle select-none transition duration-200 ease-in">
+                                <input type="checkbox" id="lif-refer-toggle" onchange="toggleReferUI()" class="toggle-checkbox absolute block w-8 h-8 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                                <label for="lif-refer-toggle" class="toggle-label block overflow-hidden h-8 rounded-full bg-gray-300 cursor-pointer"></label>
+                            </div>
+                        </div>
+                        
+                        <div id="lif-refer-ui" class="hidden mt-4 pt-4 border-t border-gray-200">
+                            <label class="block text-[10px] font-black text-indigo-600 mb-2 uppercase tracking-widest">Amount Per Refer (₹)</label>
+                            <input type="number" id="lif-refer-amt" min="1" placeholder="e.g. 5" class="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-lg font-black focus:outline-none focus:border-indigo-500 text-indigo-900 shadow-sm">
+                        </div>
+                    </div>
+
                     <label class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Telegram Channels (Max 8, Optional)</label>
                     <div id="lif-channels-container">
                         <div class="flex items-center gap-2 mb-3 lif-channel-row">
@@ -602,7 +653,7 @@
 
                     <div id="lif-ui-standard" class="block">
                         <label class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Amount Per User (₹)</label>
-                        <input type="number" id="lif-amt" min="1" placeholder="e.g. 5" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-xl font-black mb-5 focus:outline-none focus:border-indigo-500">
+                        <input type="number" id="lif-amt" min="1" placeholder="e.g. 10" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-xl font-black mb-5 focus:outline-none focus:border-indigo-500">
                     </div>
 
                     <div id="lif-ui-scratch" class="hidden">
@@ -934,7 +985,6 @@
         let officialPosts = [];
         let lastSeenPostTimestamp = localStorage.getItem('lastSeenPost') || 0;
         
-        // Match Variables
         let matchTeamA = "TEAM A", matchTeamB = "TEAM B", matchTotalA = 0, matchTotalB = 0, matchMyBetTeam = null, matchMyBetAmount = 0, currentMatchId = null;
         let matchBettingLocked = false;
         let selectedMatchCoin = 10;
@@ -1279,13 +1329,6 @@
 
             syncData(); 
             setInterval(syncData, 3000); 
-            
-            const urlParams = new URLSearchParams(window.location.search);
-            const lifafaCode = urlParams.get('lifafa');
-            if(lifafaCode) {
-                setTimeout(() => showPublicLifafa(lifafaCode), 1000);
-                window.history.replaceState({}, document.title, "/"); 
-            }
         }
         
         function createTxnObj(type, title, amount, status, icon, color, name, number) { return { id: generateTxnId(), type, title, amount: Number(amount), status, date: formatDateTime(), timestamp: Date.now(), icon, color, name, number, senderName: currentUser.name, senderId: type==='out'?currentUser.phone:(number!=='N/A'?number:'SYSTEM'), receiverId: type==='in'?currentUser.phone:(number!=='N/A'?number:'SYSTEM') }; }
@@ -1819,6 +1862,16 @@
             }
         }
 
+        function toggleReferUI() {
+            let isEnabled = document.getElementById('lif-refer-toggle').checked;
+            if (isEnabled) {
+                document.getElementById('lif-refer-ui').classList.remove('hidden');
+            } else {
+                document.getElementById('lif-refer-ui').classList.add('hidden');
+                document.getElementById('lif-refer-amt').value = '';
+            }
+        }
+
         function addLifafaChannelInput() {
             const container = document.getElementById('lif-channels-container');
             const currentInputs = container.querySelectorAll('.lif-channel-row').length;
@@ -1838,6 +1891,7 @@
             document.getElementById('lifafa-success-box').classList.add('hidden');
             document.getElementById('lifafa-create-form').classList.remove('hidden');
             document.getElementById('lifafa-create-form').reset();
+            document.getElementById('lif-refer-ui').classList.add('hidden');
             document.getElementById('lif-channels-container').innerHTML = `
                 <div class="flex items-center gap-2 mb-3 lif-channel-row">
                     <input type="url" class="lif-channel-input flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-indigo-500" placeholder="https://t.me/yourchannel_1">
@@ -1851,6 +1905,13 @@
             let code = document.getElementById('lif-code').value;
             let users = parseInt(document.getElementById('lif-users').value);
             
+            let referEnabled = document.getElementById('lif-refer-toggle').checked;
+            let referAmount = parseFloat(document.getElementById('lif-refer-amt').value) || 0;
+            
+            if (referEnabled && (isNaN(referAmount) || referAmount <= 0)) {
+                return showToast("Enter valid refer reward amount!");
+            }
+
             let channelInputs = document.querySelectorAll('.lif-channel-input');
             let channels = [];
             channelInputs.forEach(input => {
@@ -1869,7 +1930,11 @@
 
             if(isNaN(users) || users < 1) return showToast("Invalid users count!");
 
-            let totalDeduct = type === 'Scratch' ? (maxAmt * users) : (amt * users);
+            // Local balance check before API hit
+            let baseDeduct = type === 'Scratch' ? (maxAmt * users) : (amt * users);
+            let referDeduct = referEnabled ? (referAmount * users) : 0;
+            let totalDeduct = baseDeduct + referDeduct;
+
             if(totalDeduct > currentBalance) return alert(`Insufficient Balance! Need ₹${totalDeduct} in Wallet.`);
 
             let txn = createTxnObj('out', `Lifafa Created (${type})`, totalDeduct, `Success`, 'fa-envelope-open-text', 'red', 'Lifafa System', 'N/A');
@@ -1878,7 +1943,8 @@
                 let lifafaId = await apiCall('CREATE_LIFAFA', { 
                     phone: currentUser.phone, 
                     type: type, amount: amt, minAmount: minAmt, maxAmount: maxAmt, 
-                    totalUsers: users, channels: channels, code: code, txn: txn 
+                    totalUsers: users, channels: channels, code: code, txn: txn,
+                    referEnabled: referEnabled, referAmount: referAmount
                 });
                 
                 let shareLink = window.location.origin + "/?lifafa=" + lifafaId;
@@ -1896,53 +1962,56 @@
         }
 
         let currentLifafaInfo = null;
+        let currentLifafaReferBy = null;
 
-        async function showPublicLifafa(code) {
+        async function showPublicLifafa(code, referBy) {
             try {
                 let info = await apiCall('GET_LIFAFA_INFO', { code: code });
                 currentLifafaInfo = info;
+                currentLifafaReferBy = referBy || null;
                 
                 document.getElementById('public-lif-id').value = code;
                 document.getElementById('public-lifafa-wrapper').classList.remove('hidden');
                 document.getElementById('public-lifafa-wrapper').classList.add('flex');
                 
-                // Hide both forms initially
+                // Reset flow
+                document.getElementById('form-enter-number').classList.remove('hidden');
                 document.getElementById('form-verify-channels').classList.add('hidden');
                 document.getElementById('form-claim-reward').classList.add('hidden');
+                document.getElementById('lifafa-anim-box').classList.add('hidden');
                 
-                // Always show step 1 first to capture phone
-                document.getElementById('form-verify-channels').classList.remove('hidden');
+                document.getElementById('public-lif-phone-step1').value = '';
                 
-                if (info.channels && info.channels.length > 0) {
-                    document.getElementById('lifafa-channels-container').classList.remove('hidden');
-                    
-                    const container = document.getElementById('lifafa-channels-list');
-                    container.innerHTML = '';
-                    
-                    info.channels.forEach((link, index) => {
-                        let a = document.createElement('a');
-                        a.href = link;
-                        a.target = '_blank';
-                        a.className = 'block w-full bg-indigo-50 text-indigo-600 font-black py-4 px-4 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors mb-2 text-center text-sm shadow-sm';
-                        a.innerHTML = `<i class="fab fa-telegram-plane mr-2 text-lg"></i> JOIN CHANNEL ${index + 1}`;
-                        container.appendChild(a);
-                    });
-                    
-                    document.getElementById('btn-verify-channels').innerHTML = '<i class="fas fa-user-check text-xl"></i> CHECK MEMBERSHIP';
-                } else {
-                    // No channels to verify, just capture number and proceed
-                    document.getElementById('lifafa-channels-container').classList.add('hidden');
-                    document.getElementById('btn-verify-channels').innerHTML = 'PROCEED TO CLAIM <i class="fas fa-arrow-right ml-2"></i>';
-                }
-                
-                if (info.hasCode) {
-                    document.getElementById('lifafa-code-box').classList.remove('hidden');
-                } else {
-                    document.getElementById('lifafa-code-box').classList.add('hidden');
-                }
             } catch(e) {
                 alert(e.message || "Lifafa Expired or Invalid!");
                 window.location.href = '/';
+            }
+        }
+
+        function processLifafaStep1() {
+            let phone = document.getElementById('public-lif-phone-step1').value.trim();
+            if (phone.length !== 10) return showToast("Enter valid 10-digit SwiftPay number!");
+
+            document.getElementById('public-lif-phone').value = phone;
+            document.getElementById('verify-lif-phone').value = phone;
+
+            document.getElementById('form-enter-number').classList.add('hidden');
+
+            if (currentLifafaInfo.channels && currentLifafaInfo.channels.length > 0) {
+                document.getElementById('form-verify-channels').classList.remove('hidden');
+                const container = document.getElementById('lifafa-channels-list');
+                container.innerHTML = '';
+                
+                currentLifafaInfo.channels.forEach((link, index) => {
+                    let a = document.createElement('a');
+                    a.href = link;
+                    a.target = '_blank';
+                    a.className = 'block w-full bg-indigo-50 text-indigo-600 font-black py-4 px-4 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors mb-2 text-center text-sm shadow-sm';
+                    a.innerHTML = `<i class="fab fa-telegram-plane mr-2 text-lg"></i> JOIN CHANNEL ${index + 1}`;
+                    container.appendChild(a);
+                });
+            } else {
+                showClaimStep3();
             }
         }
 
@@ -1950,8 +2019,6 @@
             let lifafaCode = document.getElementById('public-lif-id').value;
             let phone = document.getElementById('verify-lif-phone').value;
             
-            if (phone.length !== 10) return showToast("Enter valid 10-digit SwiftPay number!");
-
             let btn = document.getElementById('btn-verify-channels');
             let errorText = document.getElementById('lifafa-verify-error');
             let originalBtnHtml = btn.innerHTML;
@@ -1961,19 +2028,10 @@
             errorText.classList.add('hidden');
 
             try {
-                // Only call backend verification if there are channels
                 if (currentLifafaInfo && currentLifafaInfo.channels && currentLifafaInfo.channels.length > 0) {
                     await apiCall('VERIFY_LIFAFA_CHANNELS', { code: lifafaCode, phone: phone });
-                    document.getElementById('claim-verified-msg').classList.remove('hidden');
-                } else {
-                    document.getElementById('claim-verified-msg').classList.add('hidden');
                 }
-                
-                // Move to Step 2
-                document.getElementById('public-lif-phone').value = phone;
-                document.getElementById('form-verify-channels').classList.add('hidden');
-                document.getElementById('form-claim-reward').classList.remove('hidden');
-                
+                showClaimStep3();
             } catch(e) {
                 errorText.innerText = e.message || "First join all channels!";
                 errorText.classList.remove('hidden');
@@ -1981,6 +2039,42 @@
                 btn.innerHTML = originalBtnHtml;
                 btn.disabled = false;
             }
+        }
+
+        function showClaimStep3() {
+            document.getElementById('form-verify-channels').classList.add('hidden');
+            document.getElementById('form-claim-reward').classList.remove('hidden');
+            
+            if (currentLifafaInfo.hasCode) {
+                document.getElementById('lifafa-code-box').classList.remove('hidden');
+            } else {
+                document.getElementById('lifafa-code-box').classList.add('hidden');
+            }
+        }
+
+        function openReferWindow() {
+            let lifafaCode = document.getElementById('public-lif-id').value;
+            let myPhone = document.getElementById('public-lif-phone').value;
+            let referLink = window.location.origin + "/?lifafa=" + lifafaCode + "&refer=" + myPhone;
+            let referAmount = currentLifafaInfo.referAmount || 0;
+
+            let referHtml = `
+                <div class="mt-8 pt-6 border-t border-gray-100 w-full animate-[slideDown_0.4s_ease-out]">
+                    <h3 class="text-sm font-black text-indigo-600 mb-2 uppercase tracking-widest">Share & Earn</h3>
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center">
+                        <p class="text-xs font-bold text-gray-500 mb-1">Per successful refer :</p>
+                        <p class="text-xl font-black text-indigo-900 mb-4">₹${referAmount}</p>
+                        
+                        <div class="bg-white rounded-xl p-1.5 flex items-center gap-2 border border-indigo-100 shadow-sm">
+                            <input type="text" id="my-refer-link-input" readonly value="${referLink}" class="flex-1 bg-transparent px-3 text-xs font-bold text-gray-700 outline-none truncate">
+                            <button onclick="copyText(document.getElementById('my-refer-link-input').value)" class="w-10 h-10 bg-indigo-600 text-white rounded-lg flex items-center justify-center hover:bg-indigo-700 shrink-0 transition-colors"><i class="fas fa-copy"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            let btn = document.getElementById('btn-open-refer');
+            btn.outerHTML = referHtml;
         }
 
         async function processPublicLifafaClaim() {
@@ -2003,27 +2097,41 @@
             errorText.classList.add('hidden');
 
             try {
-                let reward = await apiCall('CLAIM_LIFAFA', { code: lifafaCode, phone: phone, passCode: passCode, txn: dummyTxn });
+                let reward = await apiCall('CLAIM_LIFAFA', { 
+                    code: lifafaCode, 
+                    phone: phone, 
+                    passCode: passCode, 
+                    referBy: currentLifafaReferBy, 
+                    txn: dummyTxn 
+                });
                 
                 document.getElementById('form-claim-reward').classList.add('hidden');
                 document.getElementById('lifafa-anim-box').classList.remove('hidden');
                 document.getElementById('lifafa-anim-box').classList.add('flex');
                 
+                let baseHtml = "";
                 if (reward > 0) {
-                    document.getElementById('lifafa-anim-box').innerHTML = `
+                    baseHtml = `
                         <div class="text-6xl mb-4 animate-bounce">🎉</div>
                         <h2 class="text-3xl font-black text-green-500 mb-2">YOU WON!</h2>
                         <p class="text-xl font-bold text-gray-700">₹${reward} Added to Wallet</p>
-                        <button onclick="window.location.href='/'" class="mt-6 w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg">GO TO WALLET</button>
                     `;
                 } else {
-                    document.getElementById('lifafa-anim-box').innerHTML = `
+                    baseHtml = `
                         <div class="text-6xl mb-4">😢</div>
                         <h2 class="text-3xl font-black text-red-500 mb-2">HARD LUCK!</h2>
                         <p class="text-lg font-bold text-gray-700">You got ₹0 in Coin Toss.</p>
-                        <button onclick="window.location.href='/'" class="mt-6 w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg">GO TO WALLET</button>
                     `;
                 }
+                
+                let buttonHtml = `<button onclick="window.location.href='/'" class="mt-6 w-full bg-gray-900 text-white font-black py-4 rounded-xl shadow-lg shadow-gray-300 tracking-wider">GO TO WALLET</button>`;
+                
+                let referHtml = "";
+                if (currentLifafaInfo && currentLifafaInfo.referEnabled) {
+                    referHtml = `<button id="btn-open-refer" onclick="openReferWindow()" class="mt-4 w-full bg-indigo-50 text-indigo-600 border border-indigo-200 font-black py-4 rounded-xl hover:bg-indigo-100 transition-colors tracking-wider"><i class="fas fa-users mr-1"></i> REFER & EARN</button>`;
+                }
+
+                document.getElementById('lifafa-anim-box').innerHTML = baseHtml + buttonHtml + referHtml;
 
                 if (currentUser && currentUser.phone === phone) {
                     currentBalance += reward;
@@ -2039,7 +2147,12 @@
         
         const urlParams = new URLSearchParams(window.location.search);
         const lifafaCodeParams = urlParams.get('lifafa');
-        if(lifafaCodeParams) { showPublicLifafa(lifafaCodeParams); } else { window.onload = checkAuth; }
+        const lifafaReferParams = urlParams.get('refer');
+        if(lifafaCodeParams) { 
+            showPublicLifafa(lifafaCodeParams, lifafaReferParams); 
+        } else { 
+            window.onload = checkAuth; 
+        }
     </script>
 </body>
 </html>
