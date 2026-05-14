@@ -325,6 +325,37 @@ export default async function handler(req, res) {
             return res.json({ data: myLifafas });
         }
 
+        if (action === 'VERIFY_LIFAFA_CHANNELS') {
+            const lifafaRef = ref(db, `lifafas/${data.code}`);
+            const lifafaSnap = await get(lifafaRef);
+            if (!lifafaSnap.exists()) throw new Error("Lifafa not found.");
+            
+            let lData = lifafaSnap.val();
+            const hoursOld = (Date.now() - (lData.timestamp || 0)) / (1000 * 60 * 60);
+            if (hoursOld > 72 && lData.status === 'ACTIVE') {
+                await update(lifafaRef, { status: 'EXPIRED' });
+                throw new Error("This Lifafa has expired.");
+            }
+
+            if (lData.status !== 'ACTIVE') throw new Error("Lifafa is fully claimed or expired.");
+
+            if (lData.channels && lData.channels.length > 0) {
+                const uSnap = await get(ref(db, `users/${data.phone}`));
+                if (!uSnap.exists()) throw new Error("User account not found!");
+                const tgUserId = uSnap.val().tgUserId;
+                
+                if (!tgUserId) throw new Error("Please register your Telegram User ID first to verify.");
+                
+                for (let channel of lData.channels) {
+                    let isMember = await checkTgMembership(channel, tgUserId);
+                    if (!isMember) {
+                        throw new Error("Please join all channels to proceed!");
+                    }
+                }
+            }
+            return res.json({ data: "Success" });
+        }
+
         if (action === 'CLAIM_LIFAFA') {
             const lifafaRef = ref(db, `lifafas/${data.code}`);
             const lifafaSnap = await get(lifafaRef);
