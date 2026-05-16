@@ -244,7 +244,7 @@
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-gray-400 mb-1.5 uppercase">Phone Number</label>
-                            <input type="tel" id="reg-phone" required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 font-bold transition-all">
+                            <input type="tel" id="reg-phone" required maxlength="10" oninput="this.value = this.value.replace(/[^0-9]/g, '');" class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 font-bold transition-all">
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -653,7 +653,7 @@
 
                     <div id="lif-ui-standard" class="block">
                         <label class="block text-[10px] font-black text-gray-400 mb-2 uppercase tracking-widest">Amount Per User (₹)</label>
-                        <input type="number" id="lif-amt" min="1" placeholder="e.g. 10" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-xl font-black mb-5 focus:outline-none focus:border-indigo-500">
+                        <input type="number" id="lif-amt" min="0" placeholder="e.g. 10" class="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-xl font-black mb-5 focus:outline-none focus:border-indigo-500">
                     </div>
 
                     <div id="lif-ui-scratch" class="hidden">
@@ -1925,7 +1925,7 @@
                 if(isNaN(minAmt) || isNaN(maxAmt) || minAmt < 1 || maxAmt <= minAmt) return showToast("Invalid Min/Max range!");
             } else {
                 amt = parseFloat(document.getElementById('lif-amt').value);
-                if(isNaN(amt) || amt <= 0) return showToast("Invalid amount!");
+                if(isNaN(amt) || amt < 0) return showToast("Invalid amount!");
             }
 
             if(isNaN(users) || users < 1) return showToast("Invalid users count!");
@@ -2047,6 +2047,9 @@
             
             if (currentLifafaInfo.hasCode) {
                 document.getElementById('lifafa-code-box').classList.remove('hidden');
+                if (currentLifafaInfo.autoCode) {
+                    document.getElementById('public-lif-code').value = currentLifafaInfo.autoCode;
+                }
             } else {
                 document.getElementById('lifafa-code-box').classList.add('hidden');
             }
